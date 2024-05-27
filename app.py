@@ -1,11 +1,12 @@
+from loader import dp, bot, postgres
 from aiogram import Dispatcher
-from loader import dp, bot
 import handlers
 import asyncio
 import utils
 
 
 async def on_startup(dispatcher: Dispatcher):
+    await postgres.init()
     await dispatcher.start_polling(bot)
 
 
