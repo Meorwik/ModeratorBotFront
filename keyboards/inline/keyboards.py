@@ -1,6 +1,6 @@
 from .callbacks import ActionCallback
 from .base import InlineBuilder, FacadeKeyboard, PageableKeyboard
-from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, WebAppInfo
 from database.models import Chat, ChatGroup
 from data.config import config, meta
 from typing import Final, List, Dict, Union, Set
@@ -201,7 +201,7 @@ class PinTimeSelectionBuilder(FacadeKeyboard):
     _ADJUST_SIZES = [1]
 
     _FACADE: Dict = {
-        "Без закрепления": ActionCallback(menu_level=_LEVEL, action="no_pin").pack(),
+        "Без закрепления": ActionCallback(menu_level=_LEVEL, action="0").pack(),
         "Закреп на 1 сутки": ActionCallback(menu_level=_LEVEL, action="1").pack(),
         "Закреп на 2 суток": ActionCallback(menu_level=_LEVEL, action="2").pack(),
         "Закреп на 5 суток": ActionCallback(menu_level=_LEVEL, action="5").pack(),
@@ -211,3 +211,74 @@ class PinTimeSelectionBuilder(FacadeKeyboard):
     def __init__(self):
         super().__init__(level=self._LEVEL)
 
+
+class PlacementTypeSelection(FacadeKeyboard):
+    __name__: str = "PlacementTypeSelection"
+
+    _LEVEL = "PlacementTypeSelection"
+    _ADJUST_SIZES = [3, 1, 1]
+
+    _FACADE: Dict = {
+        "⬅️": ActionCallback(menu_level=_LEVEL, action="previous_option").pack(),
+        "Выбрать": ActionCallback(menu_level=_LEVEL, action="select_option").pack(),
+        "➡️": ActionCallback(menu_level=_LEVEL, action="next_option").pack(),
+    }
+
+    __MAX_OPTIONS_COUNT: Final[int] = 3
+    __SELECT_BUTTON_INDEX: Final[int] = 1
+
+    def __init__(self):
+        super().__init__(level=self._LEVEL)
+        self.__option_number = 1
+
+    def __create_additional_buttons(self) -> List[InlineKeyboardButton]:
+        choose_datetime_button: InlineKeyboardButton = InlineKeyboardButton(
+            text="Выбрать дату и время",
+            web_app=WebAppInfo(url=config.WEB_APP_URL),
+        )
+        send_message_button: InlineKeyboardButton = InlineKeyboardButton(
+            text="Отправить сообщение",
+            callback_data=ActionCallback(menu_level=self.level, action="send_message").pack()
+        )
+        return [choose_datetime_button, send_message_button]
+
+    def _init_keyboard(self) -> None:
+        buttons: List[InlineKeyboardButton] = []
+        for text, callback in self._FACADE.items():
+            buttons.append(
+                InlineKeyboardButton(text=text, callback_data=callback)
+            )
+
+        for button in self.__create_additional_buttons():
+            buttons.append(button)
+
+        self.add(*buttons)
+
+    def next_option(self):
+        self.__option_number += 1
+
+    def previous_option(self):
+        self.__option_number -= 1
+
+    def is_marked(self) -> bool:
+        button: InlineKeyboardButton = self.as_markup().inline_keyboard[0][self.__SELECT_BUTTON_INDEX]
+        return "✅" in button.text
+
+    def mark_option(self):
+        button: InlineKeyboardButton = self.as_markup().inline_keyboard[0][self.__SELECT_BUTTON_INDEX]
+        button.text = "✅ Выбранно"
+
+    def unmark_option(self):
+        button: InlineKeyboardButton = self.as_markup().inline_keyboard[0][self.__SELECT_BUTTON_INDEX]
+        button.text = "Выбрать"
+
+    @property
+    def option_number(self):
+        return self.__option_number
+
+    @option_number.setter
+    def option_number(self, value):
+        if self.__option_number + value > self.__MAX_OPTIONS_COUNT:
+            raise ValueError
+        else:
+            self.__option_number += value

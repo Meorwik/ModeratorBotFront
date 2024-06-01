@@ -26,4 +26,3 @@ class PlaceAdvertisementForm(Form):
     message: MessageToPlaceForm = field(default_factory=MessageToPlaceForm)
     pin_days: int = 0
     total_cost: int = 0
-

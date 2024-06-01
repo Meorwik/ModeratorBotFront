@@ -9,6 +9,7 @@ class Config:
     BOT_TOKEN: Final[str] = environ.get("BOT_TOKEN")
     POSTGRES_ENGINE: Final[str] = environ.get("POSTGRESQL_ENGINE")
     REDIS_URL: Final[str] = environ.get("REDIS_URL")
+    WEB_APP_URL: Final[str] = environ.get("WEB_APP_URL")
 
 
 @dataclass
@@ -29,6 +30,7 @@ class PricesMetaData:
 class MetaData:
     CONTACT_US_URL: Final[str] = "https://t.me/Meorwik"
     MAIN_CHANNEL_URL: Final[str] = "https://t.me/Meorwik"
+    MAX_PIN_DAYS_POSSIBLE: Final[int] = 31
 
 
 @dataclass
