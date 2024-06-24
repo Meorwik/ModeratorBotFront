@@ -1,4 +1,3 @@
-from base64 import b64decode, b64encode
 from pickle import dumps, loads
 from typing import Final
 

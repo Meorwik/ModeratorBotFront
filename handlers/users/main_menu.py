@@ -17,6 +17,13 @@ from aiogram import F
 main_menu_router: Final[Router] = Router(name='main_menu')
 
 
+async def reopen_main_menu(call: CallbackQuery):
+    await call.message.edit_text(
+        text=texts.get("greetings"),
+        reply_markup=MainMenuBuilder().get_keyboard()
+    )
+
+
 @main_menu_router.callback_query(ActionCallback.filter(F.menu_level == MainMenuBuilder.get_menu_level()))
 async def handle_main_menu(call: CallbackQuery, state: FSMContext):
     callback_components: ActionCallback = ActionCallback.unpack(call.data)
@@ -58,7 +65,4 @@ async def handle_main_menu(call: CallbackQuery, state: FSMContext):
 
 @main_menu_router.callback_query(BackCallback.filter(F.go_to == MainMenuBuilder.get_menu_level()))
 async def handle_back_button(call: CallbackQuery):
-    await call.message.edit_text(
-        text=texts.get("greetings"),
-        reply_markup=MainMenuBuilder().get_keyboard()
-    )
+    await reopen_main_menu(call)

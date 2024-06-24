@@ -1,9 +1,10 @@
-from .callbacks import ActionCallback
 from .base import InlineBuilder, FacadeKeyboard, PageableKeyboard
-from aiogram.types import InlineKeyboardButton, WebAppInfo
-from database.models import Chat, ChatGroup
-from data.config import config, meta
+from .callbacks import ActionCallback, AdminCallback
 from typing import Final, List, Dict, Union, Set
+from aiogram.types import InlineKeyboardButton
+from database.models import Chat, ChatGroup
+from forms.enums import PlacementTypes
+from data.config import config, meta
 
 CONTACT_ME_URL: Final[str] = "https://t.me/Meorwik"
 
@@ -216,69 +217,94 @@ class PlacementTypeSelection(FacadeKeyboard):
     __name__: str = "PlacementTypeSelection"
 
     _LEVEL = "PlacementTypeSelection"
-    _ADJUST_SIZES = [3, 1, 1]
+    _ADJUST_SIZES = [3, 1]
 
     _FACADE: Dict = {
         "⬅️": ActionCallback(menu_level=_LEVEL, action="previous_option").pack(),
         "Выбрать": ActionCallback(menu_level=_LEVEL, action="select_option").pack(),
         "➡️": ActionCallback(menu_level=_LEVEL, action="next_option").pack(),
+        "Отправить сообщение": ActionCallback(menu_level=_LEVEL, action="send_message").pack()
     }
 
     __MAX_OPTIONS_COUNT: Final[int] = 3
+    __MIN_OPTIONS_COUNT: Final[int] = 1
     __SELECT_BUTTON_INDEX: Final[int] = 1
 
     def __init__(self):
         super().__init__(level=self._LEVEL)
         self.__option_number = 1
+        self.buttons_storage: List[InlineKeyboardButton] = self.__create_buttons()
 
-    def __create_additional_buttons(self) -> List[InlineKeyboardButton]:
-        choose_datetime_button: InlineKeyboardButton = InlineKeyboardButton(
-            text="Выбрать дату и время",
-            web_app=WebAppInfo(url=config.WEB_APP_URL),
-        )
-        send_message_button: InlineKeyboardButton = InlineKeyboardButton(
-            text="Отправить сообщение",
-            callback_data=ActionCallback(menu_level=self.level, action="send_message").pack()
-        )
-        return [choose_datetime_button, send_message_button]
-
-    def _init_keyboard(self) -> None:
+    def __create_buttons(self) -> List[InlineKeyboardButton]:
         buttons: List[InlineKeyboardButton] = []
         for text, callback in self._FACADE.items():
             buttons.append(
                 InlineKeyboardButton(text=text, callback_data=callback)
             )
 
-        for button in self.__create_additional_buttons():
-            buttons.append(button)
+        return buttons
 
-        self.add(*buttons)
+    def _init_keyboard(self) -> None:
+        self.add(*self.buttons_storage)
 
     def next_option(self):
-        self.__option_number += 1
+        if self.__option_number == self.__MAX_OPTIONS_COUNT:
+            self.__option_number = self.__MIN_OPTIONS_COUNT
+        else:
+            self.__option_number += 1
 
     def previous_option(self):
-        self.__option_number -= 1
+        if self.__option_number == self.__MIN_OPTIONS_COUNT:
+            self.__option_number = self.__MAX_OPTIONS_COUNT
+        else:
+            self.__option_number -= 1
 
     def is_marked(self) -> bool:
-        button: InlineKeyboardButton = self.as_markup().inline_keyboard[0][self.__SELECT_BUTTON_INDEX]
-        return "✅" in button.text
+        select_button: InlineKeyboardButton = self.buttons_storage[self.__SELECT_BUTTON_INDEX]
+        return "✅" in select_button.text
 
     def mark_option(self):
-        button: InlineKeyboardButton = self.as_markup().inline_keyboard[0][self.__SELECT_BUTTON_INDEX]
-        button.text = "✅ Выбранно"
+        select_button: InlineKeyboardButton = self.buttons_storage[self.__SELECT_BUTTON_INDEX]
+        select_button.text = "✅ Выбранно"
 
     def unmark_option(self):
-        button: InlineKeyboardButton = self.as_markup().inline_keyboard[0][self.__SELECT_BUTTON_INDEX]
-        button.text = "Выбрать"
+        select_button: InlineKeyboardButton = self.buttons_storage[self.__SELECT_BUTTON_INDEX]
+        select_button.text = "Выбрать"
 
     @property
     def option_number(self):
         return self.__option_number
 
-    @option_number.setter
-    def option_number(self, value):
-        if self.__option_number + value > self.__MAX_OPTIONS_COUNT:
-            raise ValueError
+
+class CompletePlaceAdvertisementFormMenu(FacadeKeyboard):
+    __name__: str = "CompletePlaceAdvertisementFormBuilder"
+
+    _ADJUST_SIZES = [1]
+    _LEVEL = "CompletePlaceAdvertisementForm"
+
+    def __init__(self, placement_type: PlacementTypes, has_media: bool = None, is_document: bool = None):
+        super().__init__(level=self._LEVEL, data=(placement_type, has_media, is_document))
+
+    def _init_facade(self, data=None, **kwargs) -> Dict:
+        placement_type: PlacementTypes = data[0]
+        has_media: bool = data[1]
+        is_document: bool = data[2]
+
+        if placement_type == PlacementTypes.message_from_bot:
+            facade: Dict = {"✏️ Изменить": ActionCallback(menu_level=self._LEVEL, action="modify").pack()}
+
+            if not is_document:
+                facade["📎 Прикрепить медиа"] = ActionCallback(menu_level=self._LEVEL, action="attach_media").pack()
+
+            facade["✅ Продолжить"] = ActionCallback(menu_level=self._LEVEL, action="complete").pack()
+
+            if has_media:
+                facade["Удалить все медиа"] = ActionCallback(menu_level=self._LEVEL, action="delete_all_media").pack()
+
         else:
-            self.__option_number += value
+            facade: Dict = {
+                "✅ Продолжить": ActionCallback(menu_level=self._LEVEL, action="complete").pack(),
+            }
+
+        return facade
+

@@ -51,7 +51,7 @@ class BaseBuilder(InlineKeyboardBuilder, ABC):
 class InlineBuilder(BaseBuilder):
     __name__ = "InlineBuilder"
     _BACK_BUTTON_TEXT: str = texts.get("back_button")
-    __BASE_LEVEL: Final[str] = "MainMenu"
+    __BASE_LEVEL: str = "MainMenu"
     __BASE_BACK_BUTTON_CALLBACK: CallbackData = BackCallback(go_to=__BASE_LEVEL)
     _ADJUST_SIZES: List[int] = []
     _LEVEL: str = __BASE_LEVEL
@@ -79,7 +79,7 @@ class InlineBuilder(BaseBuilder):
 
         if back_callback is None:
             return InlineKeyboardButton(
-                text=self._BACK_BUTTON_TEXT,
+                text="🔙 В главное меню",
                 callback_data=self.__BASE_BACK_BUTTON_CALLBACK.pack()
             )
         else:

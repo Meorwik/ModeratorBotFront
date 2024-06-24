@@ -22,14 +22,15 @@ class PricesMetaData:
     """
 
     ONE_CHAT: Final[int] = 300
+    ALL_CHATS: Final[int] = 2000
     ONE_DAY_PIN_FOR_ALL_CHATS: Final[int] = 1500
     ONE_DAY_PIN_FOR_ONE_CHAT: Final[int] = 100
 
 
 @dataclass
 class MetaData:
-    CONTACT_US_URL: Final[str] = "https://t.me/Meorwik"
-    MAIN_CHANNEL_URL: Final[str] = "https://t.me/Meorwik"
+    CONTACT_US_URL: Final[str] = "https://t.me/n1kol4y"
+    MAIN_CHANNEL_URL: Final[str] = "https://t.me/n1kol4y"
     MAX_PIN_DAYS_POSSIBLE: Final[int] = 31
 
 
@@ -43,6 +44,14 @@ class MenuReferences:
     TO_CHAT_PICK: str = ""
     TO_VARIOUS_CHAT_PICK: str = ""
     TO_PIN_TIME_SELECTION: str = ""
+    TO_PLACEMENT_TYPE_SELECTION: str = ""
+    TO_WRITE_MESSAGE: str = ""
+    TO_CHECK_STAGE: str = ""
+
+
+@dataclass
+class AdminMenuReferences:
+    TO_POST_MODERATION: str = ""
 
 
 @dataclass
@@ -54,3 +63,4 @@ class ToolBox:
 config: Final[Config] = Config()
 meta: Final[MetaData] = MetaData()
 tools: Final[ToolBox] = ToolBox()
+price_meta: Final[PricesMetaData] = PricesMetaData()

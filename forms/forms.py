@@ -1,17 +1,30 @@
-from typing import List, Union, Dict
 from dataclasses import dataclass, field
-from .enums import PlacementTypes
 from database.models import ChatGroup
+from typing import List, Union, Dict
+from .enums import PlacementTypes
+from aiogram.types import Message
+from .base import Form
 
 
-class Form:
-    def as_dict(self) -> Dict:
-        return self.__dict__
+@dataclass
+class UserForm(Form):
+    id: Union[str, int] = None
+    username: str = None
 
 
+@dataclass
 class MessageToPlaceForm(Form):
-    text: str
-    # TODO: write the rest of the MessageToPlace form including the way how to store different media
+    text: str = None
+    only_text: bool = None
+
+    album: List[Message] = field(default_factory=list)
+
+    is_forward: bool = None
+    message_id: int = None
+    from_user: UserForm = None
+
+    is_document: bool = None
+    document: str = None
 
 
 @dataclass
@@ -21,8 +34,12 @@ class ElectiveChatGroup(Form):
 
 @dataclass
 class PlaceAdvertisementForm(Form):
-    chats: List[Union[str, int, ChatGroup, ElectiveChatGroup]] = field(default_factory=list)
+    chats: Union[ChatGroup, ElectiveChatGroup] = field(default_factory=list)
     placement_type: PlacementTypes = None
     message: MessageToPlaceForm = field(default_factory=MessageToPlaceForm)
     pin_days: int = 0
+    time: str = None
+    date: str = None
     total_cost: int = 0
+
+    moderation_notes: str = None
