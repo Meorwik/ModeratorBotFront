@@ -65,3 +65,18 @@ class ContinueModerationKeyboard(FacadeKeyboard):
         super().__init__(level=self._LEVEL)
 
 
+class StatisticsKeyboard(FacadeKeyboard):
+    _LEVEL = "StatisticsKeyboard"
+
+    _ADJUST_SIZES: List[int] = [1]
+
+    _FACADE = {
+        "Оборот 💸": AdminCallback(menu_level=_LEVEL, action="income").pack(),
+        "Публикации 📝": AdminCallback(menu_level=_LEVEL, action="posts").pack(),
+        "Пользователи 👤": AdminCallback(menu_level=_LEVEL, action="users").pack()
+    }
+
+    def __init__(self):
+        super().__init__(level=self._LEVEL)
+
+

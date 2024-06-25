@@ -195,6 +195,46 @@ post_declined: Final[str] = """
 <i>{notes}</i>
 """
 
+users_statistics: Final[str] = """
+Статистика пользователей
+
+Общее кол-во: <b>{all_users_count}</b> чел
+-----------------------------------------------
+Новых за месяц: <b>{month_users}</b> чел
+-----------------------------------------------
+Новых за неделю: <b>{week_users}</b> чел
+-----------------------------------------------
+Новых за день: <b>{day_users}</b> чел
+"""
+
+
+posts_statistics: Final[str] = """
+Статистика публикаций
+
+Всего: <b>{all_posts_count}</b>
+-----------------------------------------------
+Размещено: <b>{placed_posts_count}</b>
+-----------------------------------------------
+Размещено с закреплением: <b>{placed_with_pin_count}</b>
+-----------------------------------------------
+Размещено без закрепления: <b>{placed_without_pin_count}</b>
+-----------------------------------------------
+В ожидании: <b>{posts_waiting_count}</b>
+"""
+
+
+income_statistics: Final[str] = """
+Статистика доходов
+
+Доход за всё время: <b>{total_income}</b> руб
+-----------------------------------------------
+Доход за месяц: <b>{month_income}</b> руб
+-----------------------------------------------
+Доход за неделю: <b>{week_income}</b> руб
+-----------------------------------------------
+Доход за день: <b>{day_income}</b> руб
+"""
+
 
 texts: Final[Dict] = {
     "greetings": greeting_text,
@@ -230,4 +270,7 @@ templates: Final[Dict] = {
     "admin_greeting": admin_greeting,
     "post_declined": post_declined,
 
+    "users_statistics": users_statistics,
+    "posts_statistics": posts_statistics,
+    "income_statistics": income_statistics
 }

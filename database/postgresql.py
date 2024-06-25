@@ -4,7 +4,7 @@ from sqlalchemy.sql import select, delete, update
 from typing import Final, Union, List
 from sqlalchemy import func
 from .base import DatabaseManager, Base
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 
 class PostgresManager(DatabaseManager):
@@ -38,6 +38,13 @@ class PostgresManager(DatabaseManager):
             result = await session.execute(query)
             return result.scalars().one()
 
+    async def count_all_users(self) -> int:
+        async with self.Session() as session:
+            query = select(func.count(User.id))
+
+            result = await session.execute(query)
+            return result.scalars().one()
+
     async def count_users_joined_today(self) -> int:
         async with self.Session() as session:
             today_start = datetime.combine(date.today(), datetime.min.time())
@@ -46,6 +53,41 @@ class PostgresManager(DatabaseManager):
             query = select(func.count(User.id)).where(
                 User.register_date >= today_start,
                 User.register_date <= today_end
+            )
+
+            result = await session.execute(query)
+            return result.scalars().one()
+
+    async def count_users_joined_this_week(self) -> int:
+        days_in_week: Final[int] = 7
+
+        async with self.Session() as session:
+            today = date.today()
+            start_of_week = today - timedelta(days=today.weekday())
+            end_of_week = start_of_week + timedelta(days=days_in_week)
+
+            query = select(func.count(User.id)).where(
+                User.register_date >= start_of_week,
+                User.register_date < end_of_week
+            )
+
+            result = await session.execute(query)
+            return result.scalars().one()
+
+    async def count_users_joined_this_month(self) -> int:
+        first_day: Final[int] = 1
+        last_day_adjustment: Final[int] = 4
+        day_limit: Final[int] = 28
+        async with self.Session() as session:
+            today = date.today()
+            first_day_of_month = today.replace(day=first_day)
+            next_month = (first_day_of_month.replace(day=day_limit) + timedelta(days=last_day_adjustment)).replace(
+                day=first_day)
+            first_day_of_next_month = next_month
+
+            query = select(func.count(User.id)).where(
+                User.register_date >= first_day_of_month,
+                User.register_date < first_day_of_next_month
             )
 
             result = await session.execute(query)
@@ -131,6 +173,6 @@ class PostgresManager(DatabaseManager):
                 ModerationRequest.status == ModerationStatus.waiting
             ).values(status=status)
 
-            result = await session.execute(query)
+            await session.execute(query)
             await session.commit()
 

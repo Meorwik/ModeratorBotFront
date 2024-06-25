@@ -1,5 +1,5 @@
 from keyboards.inline.admin_keyboards import AdminMainMenuKeyboard, AdminModerationKeyboard, DeclinedPostKeyboard, \
-    InlineBuilder, ContinueModerationKeyboard
+    InlineBuilder, ContinueModerationKeyboard, StatisticsKeyboard
 
 from keyboards.inline.callbacks import AdminCallback, BackCallback
 from database.models import ModerationRequest, ModerationStatus
@@ -69,7 +69,10 @@ async def handle_main_admin_menu(call: CallbackQuery, state: FSMContext):
     state_data: Dict = await state.get_data()
 
     if callback_components.action == "statistics":
-        ...
+        statistics_keyboard: Final[StatisticsKeyboard] = StatisticsKeyboard()
+        await call.message.edit_reply_markup(
+            reply_markup=statistics_keyboard.get_keyboard(BackCallback(go_to="AdminMainMenu").pack())
+        )
 
     elif callback_components.action == "placements":
         ...
@@ -171,4 +174,19 @@ async def handle_continue_moderation(call: CallbackQuery, state: FSMContext):
         )
 
     await state.set_data(state_data)
+
+
+@admin_router.callback_query(AdminCallback.filter(F.menu_level == StatisticsKeyboard.get_menu_level()))
+async def handle_statistics_menu(call: CallbackQuery, state: FSMContext):
+    callback_components: AdminCallback = AdminCallback.unpack(call.data)
+    state_data: Dict = await state.get_data()
+
+    if callback_components.action == "income":
+        ...
+
+    elif callback_components.action == "posts":
+        ...
+
+    elif callback_components.action == "users":
+        ...
 
