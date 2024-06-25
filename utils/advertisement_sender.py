@@ -1,15 +1,15 @@
-from forms.forms import PlaceAdvertisementForm
-from forms.enums import PlacementTypes
-from aiogram.types import InputMediaPhoto, InputMediaVideo, User
-from keyboards.inline.callbacks import BackCallback
-from forms.forms import ElectiveChatGroup
-from database.models import ChatGroup, Chat
 from keyboards.inline.admin_keyboards import AdminModerationKeyboard
-from data.texts import texts
+from aiogram.types import InputMediaPhoto, InputMediaVideo
+from keyboards.inline.callbacks import BackCallback
+from forms.forms import PlaceAdvertisementForm
+from forms.forms import ElectiveChatGroup
+from forms.enums import PlacementTypes
+from typing import Union, Final, List
+from database.models import Chat
 from loader import bot, postgres
 from data.texts import templates
 from data.config import tools
-from typing import Union, Final, List
+from data.texts import texts
 
 
 class AdvertisementSender:
@@ -83,10 +83,18 @@ class AdvertisementSender:
         return [chat.chat_name for chat in chats]
 
     async def __add_moderator_text(self, place_advertisement_form: PlaceAdvertisementForm):
-        chat_ids: List = place_advertisement_form.chats.chats
+        if isinstance(place_advertisement_form.chats, ElectiveChatGroup):
+            if place_advertisement_form.chats.all_city:
+                chat_names: str = "<b>Весь город</b>"
 
-        chat_names: List[str] = await self.__extract_chat_names(chat_ids)
-        chat_names: str = str(chat_names).replace("[", "").replace("]", "")
+            else:
+                chat_ids: List = place_advertisement_form.chats.chats
+
+                chat_names: List[str] = await self.__extract_chat_names(chat_ids)
+                chat_names: str = str(chat_names).replace("[", "").replace("]", "")
+
+        else:
+            chat_names: str = place_advertisement_form.chats.name
 
         empty_template: str = templates.get("moderation_text")
         filled_template = empty_template.format(
@@ -114,13 +122,13 @@ class AdvertisementSender:
         await self.send_advertisement(
             chat_id=admin_id,
             place_advertisement_form=place_advertisement_form,
-            text=moderation_info + place_advertisement_form.message.text
+            text=place_advertisement_form.message.text
         )
 
         moderation_keyboard: Final[AdminModerationKeyboard] = AdminModerationKeyboard()
         await bot.send_message(
             chat_id=admin_id,
-            text=texts.get("request_admin_moderation_decision"),
+            text=moderation_info + texts.get("request_admin_moderation_decision"),
             reply_markup=moderation_keyboard.get_keyboard(BackCallback(go_to="AdminMainMenu").pack())
         )
         del moderation_keyboard

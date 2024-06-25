@@ -1,16 +1,13 @@
 from keyboards.inline.admin_keyboards import DeclinedPostKeyboard, InlineBuilder
 from forms.enums import PlacementTypesRequirements, PlacementTypes
 from keyboards.inline.callbacks import ActionCallback
-from aiogram.types import CallbackQuery, Message
 from forms.forms import PlaceAdvertisementForm
-from typing import Final, Dict, List, Union
 from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery
 from .main_menu import reopen_main_menu
-from data.texts import texts, templates
-from aiogram.filters import StateFilter
 from data.config import MenuReferences
 from states.states import StateGroup
-from loader import bot, postgres
+from typing import Final, Dict
 from data.config import tools
 from aiogram import Router, F
 

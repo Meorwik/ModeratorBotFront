@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from database.models import ChatGroup
-from typing import List, Union, Dict
 from .enums import PlacementTypes
 from aiogram.types import Message
+from typing import List, Union
 from .base import Form
 
 
@@ -30,6 +30,7 @@ class MessageToPlaceForm(Form):
 @dataclass
 class ElectiveChatGroup(Form):
     chats: List[Union[str, int]] = field(default_factory=list)
+    all_city: bool = False
 
 
 @dataclass
@@ -42,4 +43,8 @@ class PlaceAdvertisementForm(Form):
     date: str = None
     total_cost: int = 0
 
-    moderation_notes: str = None
+
+@dataclass
+class ModeratedAdvertisementForm(Form):
+    request_id: int
+    advertisement_form: PlaceAdvertisementForm

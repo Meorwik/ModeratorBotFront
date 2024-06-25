@@ -53,3 +53,7 @@ class AllowedContentTypes(Enum):
     unknown: ContentType.UNKNOWN = ContentType.UNKNOWN
 
 
+class AllowedCheckContentTypes(Enum):
+    photo: ContentType.PHOTO = ContentType.PHOTO
+    document: ContentType.DOCUMENT = ContentType.DOCUMENT
+

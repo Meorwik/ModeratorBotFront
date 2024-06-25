@@ -36,7 +36,7 @@ class ChatGroup(Base):
     cost_of_one_day_pin: Mapped[int] = mapped_column(nullable=False)
 
     def __repr__(self):
-        return f"ChatGroupId - {self.id}\nChats - {self.chats}\nChatGroupObject - ({id(self)})"
+        return f"ChatGroupId - {self.id} Chats - {self.chats} ChatGroupObject - ({id(self)})"
 
 
 class Chat(Base):
@@ -47,7 +47,7 @@ class Chat(Base):
     link: Mapped[str] = mapped_column(nullable=False)
 
     def __repr__(self):
-        return f"Chat - {self.chat_id}\nChatName - {self.chat_name}\nChatObject - ({id(self)})"
+        return f"Chat - {self.chat_id} ChatName - {self.chat_name} ChatObject - ({id(self)})"
 
 
 class Pin(Base):
@@ -61,7 +61,7 @@ class Pin(Base):
     user = relationship("User", foreign_keys=[user_id])
 
     def __repr__(self):
-        return f"Pin - {self.id}\nUser - {self.user_id}\nChats - ({self.chats})\nPinObject - ({id(self)})"
+        return f"Pin - {self.id} User - {self.user_id} Chats - ({self.chats}) PinObject - ({id(self)})"
 
 
 class IncomeRecord(Base):
@@ -83,6 +83,7 @@ class ModerationRequest(Base):
     __tablename__: str = 'Moderation'
 
     id: Mapped[int] = mapped_column(autoincrement=True, nullable=False, primary_key=True)
+    from_user: Mapped[BigInteger] = mapped_column(BigInteger, ForeignKey('Users.id'), nullable=False)
     form: Mapped[str] = mapped_column(nullable=False)
     status: Mapped[Enum] = mapped_column(Enum(ModerationStatus), nullable=False, default=ModerationStatus.waiting)
 

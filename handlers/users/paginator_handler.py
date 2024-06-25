@@ -26,7 +26,7 @@ async def handle_menu_pagination(call: CallbackQuery, state: FSMContext):
         paginator.open_previous_page()
 
     else:
-        await call.answer(text="123", show_alert=True)
+        await call.answer(text="Unexpected situation, inform admin, error code: 502L", show_alert=True)
 
     await call.message.edit_reply_markup(reply_markup=paginator.get_keyboard(paginator.back_callback))
     encoded_paginator: str = await tools.serializer.serialize(paginator)

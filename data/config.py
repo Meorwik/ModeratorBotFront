@@ -31,6 +31,7 @@ class PricesMetaData:
 class MetaData:
     CONTACT_US_URL: Final[str] = "https://t.me/n1kol4y"
     MAIN_CHANNEL_URL: Final[str] = "https://t.me/n1kol4y"
+    CARD_NUMBER: Final[str] = environ.get("CARD_NUMBER")
     MAX_PIN_DAYS_POSSIBLE: Final[int] = 31
 
 
@@ -52,6 +53,7 @@ class MenuReferences:
 @dataclass
 class AdminMenuReferences:
     TO_POST_MODERATION: str = ""
+    TO_STATISTICS_MENU: str = ""
 
 
 @dataclass

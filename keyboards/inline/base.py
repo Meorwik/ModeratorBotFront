@@ -51,6 +51,7 @@ class BaseBuilder(InlineKeyboardBuilder, ABC):
 class InlineBuilder(BaseBuilder):
     __name__ = "InlineBuilder"
     _BACK_BUTTON_TEXT: str = texts.get("back_button")
+    __ONEWAY_MENU_SIGN: Final[str] = "@"
     __BASE_LEVEL: str = "MainMenu"
     __BASE_BACK_BUTTON_CALLBACK: CallbackData = BackCallback(go_to=__BASE_LEVEL)
     _ADJUST_SIZES: List[int] = []
@@ -98,9 +99,10 @@ class InlineBuilder(BaseBuilder):
         self._markup = list()
         self._init_keyboard()
 
-        if self.level != self.__BASE_LEVEL:
-            self.back_callback = back_callback
-            self.add(self.get_back_button(back_callback))
+        if self.__ONEWAY_MENU_SIGN not in self.level:
+            if self.level != self.__BASE_LEVEL:
+                self.back_callback = back_callback
+                self.add(self.get_back_button(back_callback))
 
         self.adjust(*self._ADJUST_SIZES)
         return self.as_markup()

@@ -4,3 +4,4 @@ SQLAlchemy~=2.0.29
 asyncpg~=0.29.0
 asyncio-redis~=0.16.0
 redis~=5.0.4
+APScheduler~=3.10.4

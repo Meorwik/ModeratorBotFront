@@ -12,3 +12,7 @@ class StateGroup(StatesGroup):
     admin_in_moderation: State = State()
     admin_writing_notes: State = State()
 
+    in_payment_stage: State = State()
+    write_payment_check: State = State()
+    write_datetime_web_data_payment_stage: State = State()
+

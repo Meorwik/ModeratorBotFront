@@ -2,8 +2,8 @@ from forms.forms import PlaceAdvertisementForm
 from forms.forms import ElectiveChatGroup
 from database.models import ChatGroup
 from data.config import price_meta
-from loader import postgres
 from typing import Final, List
+from loader import postgres
 
 
 class PriceCounter:
@@ -26,12 +26,8 @@ class PriceCounter:
         return price
 
     async def count_price(self) -> int:
-        all_chat_ids: List[int] = await postgres.get_chat_ids()
-        if self.__form.chats == all_chat_ids:
-            return await self.__count_all_chats()
-
-        elif isinstance(self.__form.chats, ElectiveChatGroup):
-            if len(self.__form.chats.chats) == len(all_chat_ids):
+        if isinstance(self.__form.chats, ElectiveChatGroup):
+            if self.__form.chats.all_city:
                 return await self.__count_all_chats()
 
             else:
@@ -39,4 +35,26 @@ class PriceCounter:
 
         elif isinstance(self.__form.chats, ChatGroup):
             return await self.__count_chat_group(self.__form.chats.id)
+
+    async def get_placement_service_cost(self) -> int:
+        if isinstance(self.__form.chats, ElectiveChatGroup):
+            if self.__form.chats.all_city:
+                return price_meta.ALL_CHATS
+
+            else:
+                return price_meta.ONE_CHAT * len(self.__form.chats)
+
+        elif isinstance(self.__form.chats, ChatGroup):
+            return self.__form.chats.cost_of_placement
+
+    async def get_pin_service_cost(self) -> int:
+        if isinstance(self.__form.chats, ElectiveChatGroup):
+            if self.__form.chats.all_city:
+                return price_meta.ONE_DAY_PIN_FOR_ALL_CHATS * self.__form.pin_days
+
+            else:
+                return price_meta.ONE_DAY_PIN_FOR_ONE_CHAT * len(self.__form.chats)
+
+        elif isinstance(self.__form.chats, ChatGroup):
+            return self.__form.chats.cost_of_one_day_pin * self.__form.pin_days
 

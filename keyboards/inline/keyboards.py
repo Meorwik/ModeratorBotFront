@@ -1,12 +1,10 @@
 from .base import InlineBuilder, FacadeKeyboard, PageableKeyboard
-from .callbacks import ActionCallback, AdminCallback
 from typing import Final, List, Dict, Union, Set
 from aiogram.types import InlineKeyboardButton
 from database.models import Chat, ChatGroup
 from forms.enums import PlacementTypes
+from .callbacks import ActionCallback, DataPassCallback
 from data.config import config, meta
-
-CONTACT_ME_URL: Final[str] = "https://t.me/Meorwik"
 
 
 class MainMenuBuilder(InlineBuilder):
@@ -304,6 +302,86 @@ class CompletePlaceAdvertisementFormMenu(FacadeKeyboard):
         else:
             facade: Dict = {
                 "✅ Продолжить": ActionCallback(menu_level=self._LEVEL, action="complete").pack(),
+            }
+
+        return facade
+
+
+class SelectPaymentMethodKeyboard(FacadeKeyboard):
+
+    _ADJUST_SIZES = [1]
+    _LEVEL = "@SelectPaymentMethodKeyboard"
+
+    def __init__(self, advertisement_form: str):
+        super().__init__(level=self._LEVEL, data=advertisement_form)
+
+    def _init_facade(self, data=None, **kwargs) -> Dict:
+        advertisement_form: str = str(data)
+
+        facade: Dict = {
+            "Оплатить как юр лицо": DataPassCallback(
+                menu_level=self.level,
+                action="entity",
+                data=advertisement_form
+            ).pack(),
+
+            "Оплатить как физ лицо": DataPassCallback(
+                menu_level=self.level,
+                action="individual",
+                data=advertisement_form
+            ).pack(),
+
+            "Отменить публикацию": DataPassCallback(
+                menu_level=self.level,
+                action="cancel_request",
+                data=advertisement_form
+            ).pack(),
+        }
+
+        return facade
+
+
+class PaymentProviderKeyboard(FacadeKeyboard):
+
+    _ADJUST_SIZES = [1]
+    _LEVEL = "@PaymentProviderKeyboard"
+
+    def __init__(self, is_entity: bool):
+        super().__init__(level=self._LEVEL, data=is_entity)
+
+    def _init_facade(self, data=None, **kwargs) -> Dict:
+        is_entity: bool = data
+        facade: Dict = {}
+
+        if is_entity:
+            facade: Dict = {
+                "Запросить счет": "https://www.youtube.com/",
+            }
+
+        facade["Оплатил"] = ActionCallback(menu_level=self.level, action="paid").pack()
+        return facade
+
+
+class PaymentCheckResultKeyboard(FacadeKeyboard):
+
+    _ADJUST_SIZES = [1]
+    _LEVEL = "@PaymentCheckResultKeyboard"
+
+    def __init__(self, is_paid: bool):
+        super().__init__(level=self._LEVEL, data=is_paid)
+
+    def _init_facade(self, data=None, **kwargs) -> Dict:
+        is_paid: bool = data
+
+        if is_paid:
+            facade: Dict = {
+                "✅ Подтверждаю": ActionCallback(menu_level=self.level, action="confirm").pack(),
+                "⚙️ Изменить дату/время": ActionCallback(menu_level=self.level, action="change_datetime").pack()
+            }
+
+        else:
+            facade: Dict = {
+                "Связаться с админом 👤": meta.CONTACT_US_URL,
             }
 
         return facade

@@ -28,3 +28,15 @@ class WebAppKeyboard(ReplyKeyboardBuilder):
         self.adjust(*self.ADJUST_SIZES)
 
         return self.as_markup(resize_keyboard=True)
+
+    def get_keyboard_webapp_only(self):
+        web_app_button: KeyboardButton = KeyboardButton(
+            text="Выбрать дату и время ⏳",
+            web_app=WebAppInfo(url=self.__web_app_url)
+        )
+
+        self.add(web_app_button)
+        self.adjust(*self.ADJUST_SIZES)
+
+        return self.as_markup(resize_keyboard=True)
+

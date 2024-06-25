@@ -195,6 +195,157 @@ post_declined: Final[str] = """
 <i>{notes}</i>
 """
 
+users_statistics: Final[str] = """
+Статистика пользователей
+
+Общее кол-во: <b>{all_users_count}</b> чел
+-----------------------------------------------
+Новых за месяц: <b>{month_users}</b> чел
+-----------------------------------------------
+Новых за неделю: <b>{week_users}</b> чел
+-----------------------------------------------
+Новых за день: <b>{day_users}</b> чел
+"""
+
+
+posts_statistics: Final[str] = """
+Статистика публикаций
+
+Всего: <b>{all_posts_count}</b>
+-----------------------------------------------
+Размещено: <b>{placed_posts_count}</b>
+-----------------------------------------------
+Размещено с закреплением: <b>{placed_with_pin_count}</b>
+-----------------------------------------------
+Размещено без закрепления: <b>{placed_without_pin_count}</b>
+-----------------------------------------------
+В ожидании: <b>{posts_waiting_count}</b>
+"""
+
+
+income_statistics: Final[str] = """
+Статистика доходов
+
+Доход за всё время: <b>{total_income}</b> руб
+-----------------------------------------------
+Доход за месяц: <b>{month_income}</b> руб
+-----------------------------------------------
+Доход за неделю: <b>{week_income}</b> руб
+-----------------------------------------------
+Доход за день: <b>{day_income}</b> руб
+"""
+
+
+approved_post_text: Final[str] = """
+Ваше объявление прошло
+модерацию! Вы можете 
+произвести оплату 2-мя 
+способами:
+
+1) Переводом на банковскую карту (как физ. лицо)
+
+2) По реквизитам счета (как юр. лицо)
+
+Сумма к оплате: <b>{total_cost}</b> руб
+"""
+
+service_cost_check: Final[str] = """
+● <b>{service_name}</b> -- <i>{service_cost}</i> руб.
+"""
+
+payment_check_text: Final[str] = """
+Вы оплачиваете услуги:
+
+{services_cost_check}
+
+---------------------------------
+Итого: <b>{total_cost}</b> руб.
+
+Оплату можно произвести
+переводом на карту ТАКОГО-ТО
+банка: <b>{card_number}</b>
+
+После оплаты нажмите на
+кнопку
+"""
+
+canceled_post_text: Final[str] = """
+Пользователь <b>@{username}</b> отменил свою заявку на этапе оплаты.
+"""
+
+request_payment_check: Final[str] = """
+Пришлите, пожалуйста, фиксаль
+ный чек или скриншот, 
+подтверждающий оплату
+"""
+
+
+admin_checks_payment_text: Final[str] = """
+Благодарю! Администратор
+подтвердит вашу оплату в тече
+нии 15 минут.
+
+После этого ваша публикация 
+встанет в очередь.
+
+У вас будет возможность 
+изменить дату/время, если
+это необходимо.
+
+Ожидайте, я вас уведомлю
+"""
+
+
+user_confirmed_payment: Final[str] = """
+<b>@{username}</b> подтвердил оплату
+на <b>{total_cost}</b> руб
+"""
+
+failed_payment: Final[str] = """
+Ваша оплата не подтвердилась
+по каким-то причинам. Свяжи
+тесь с администратором для
+выяснения причин.
+"""
+
+successful_payment: Final[str] = """
+Спасибо за ожидание. Ваша
+оплата подтверждена.
+
+Публикация: “<b>{text_part}...</b>” будет опубликована в
+<i>{chats}</i> 
+
+Дата: <b>{date}</b>
+Время: <b>{time}</b>
+
+Вы можете изменить дату и/или
+время или подтвердите.
+
+❗️ВНИМАНИЕ❗️
+После подтверждения,
+изменить дату и время будет
+невозможно.
+"""
+
+finish_payment: Final[str] = """
+Благодарю вас за пользование
+нашими услугами! После 
+публикации объявления я вас
+уведомлю.
+
+Вы можете создать до 5 ожида
+ющих публикаций.
+"""
+
+finish_all_stages: Final[str] = """
+Благодарю вас за пользование
+нашими услугами! После 
+публикации объявления я вас
+уведомлю.
+
+Вы можете создать до 5 ожида
+ющих публикаций.
+"""
 
 texts: Final[Dict] = {
     "greetings": greeting_text,
@@ -218,7 +369,13 @@ texts: Final[Dict] = {
     "check_post_details": check_post_details,
     "attach_media_text": attach_media_text,
     "choose_publish_datetime": choose_publish_datetime,
-    "request_admin_moderation_decision": request_admin_moderation_decision
+    "request_admin_moderation_decision": request_admin_moderation_decision,
+
+    "request_payment_check": request_payment_check,
+    "admin_checks_payment_text": admin_checks_payment_text,
+    "failed_payment": failed_payment,
+    "finish_payment": finish_payment,
+    "finish_all_stages": finish_all_stages
 
 }
 
@@ -230,4 +387,15 @@ templates: Final[Dict] = {
     "admin_greeting": admin_greeting,
     "post_declined": post_declined,
 
+    "users_statistics": users_statistics,
+    "posts_statistics": posts_statistics,
+    "income_statistics": income_statistics,
+
+    "approved_post_text": approved_post_text,
+    "service_cost_check": service_cost_check,
+    "payment_check_text": payment_check_text,
+
+    "canceled_post_text": canceled_post_text,
+    "user_confirmed_payment": user_confirmed_payment,
+    "successful_payment": successful_payment
 }

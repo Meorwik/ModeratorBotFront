@@ -1,5 +1,6 @@
 from .base import InlineBuilder, FacadeKeyboard, PageableKeyboard
-from .callbacks import ActionCallback, AdminCallback, BackCallback
+from forms.forms import UserForm
+from .callbacks import ActionCallback, AdminCallback, BackCallback, DataPassCallback
 from typing import Final, List, Dict, Union, Set
 from aiogram.types import InlineKeyboardButton
 from database.models import Chat, ChatGroup
@@ -38,7 +39,7 @@ class AdminModerationKeyboard(FacadeKeyboard):
 
 
 class DeclinedPostKeyboard(FacadeKeyboard):
-    _LEVEL: str = "DeclinedPostKeyboard"
+    _LEVEL: str = "@DeclinedPostKeyboard"
 
     _ADJUST_SIZES: List[int] = [1]
 
@@ -52,7 +53,7 @@ class DeclinedPostKeyboard(FacadeKeyboard):
 
 
 class ContinueModerationKeyboard(FacadeKeyboard):
-    _LEVEL: str = "ContinueModerationKeyboard"
+    _LEVEL: str = "@ContinueModerationKeyboard"
 
     _ADJUST_SIZES: List[int] = [1]
 
@@ -65,3 +66,43 @@ class ContinueModerationKeyboard(FacadeKeyboard):
         super().__init__(level=self._LEVEL)
 
 
+class StatisticsKeyboard(FacadeKeyboard):
+    _LEVEL = "StatisticsKeyboard"
+
+    _ADJUST_SIZES: List[int] = [1]
+
+    _FACADE = {
+        "Оборот 💸": AdminCallback(menu_level=_LEVEL, action="income").pack(),
+        "Публикации 📝": AdminCallback(menu_level=_LEVEL, action="posts").pack(),
+        "Пользователи 👤": AdminCallback(menu_level=_LEVEL, action="users").pack()
+    }
+
+    def __init__(self):
+        super().__init__(level=self._LEVEL)
+
+
+class AcceptPaymentKeyboard(FacadeKeyboard):
+    _LEVEL = "@AcceptPayment"
+
+    _ADJUST_SIZES: List[int] = [1]
+
+    def __init__(self, request_id: int):
+        super().__init__(level=self._LEVEL, data=request_id)
+
+    def _init_facade(self, data=None, **kwargs) -> Dict:
+        request_id: str = str(data)
+
+        facade: Dict = {
+            "Получил оплату ✅": DataPassCallback(
+                menu_level=self.level,
+                action=f"successful_payment",
+                data=request_id
+            ).pack(),
+
+            "Не получил ❌": DataPassCallback(
+                menu_level=self.level,
+                action=f"failed_payment",
+                data=request_id
+            ).pack(),
+        }
+        return facade

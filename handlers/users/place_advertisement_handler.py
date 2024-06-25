@@ -5,13 +5,13 @@ from forms.enums import PlacementTypesMediaPaths, PlacementTypes, PlacementTypes
     PlacementTypesNames, PlacementTypesRequirements, AllowedContentTypes
 from aiogram.types import CallbackQuery, Message, FSInputFile, InputMediaPhoto, \
     InputMediaDocument, InputMediaAudio, InputMediaVideo, ReplyKeyboardRemove
-from utils.validators import IntegerValidator, StringValidator, MediaValidator
 from forms.forms import PlaceAdvertisementForm, ElectiveChatGroup, UserForm
+from utils.validators import IntegerValidator, StringValidator, MediaValidator
 from middlewares.album_middleware import AlbumMiddleware, AlbumMedia
 from keyboards.inline.callbacks import ActionCallback, BackCallback
 from database.models import Chat, ChatGroup, ModerationRequest
+from data.config import MenuReferences, tools, meta, config
 from keyboards.default.keyboards import WebAppKeyboard
-from data.config import MenuReferences, tools, meta
 from aiogram.exceptions import TelegramBadRequest
 from utils.price_counter import PriceCounter
 from typing import Final, Dict, List, Union
@@ -21,6 +21,7 @@ from aiogram.filters import StateFilter
 from states.states import StateGroup
 from loader import bot, postgres
 from aiogram import Router, F
+from redis import Redis
 
 
 place_advertisement_menu_router: Final[Router] = Router(name='place_advertisement_menu')
@@ -107,6 +108,7 @@ async def handle_chat_selection(call: CallbackQuery, state: FSMContext):
 
     elif callback_components.action == "select_all":
         elective_chat_group: ElectiveChatGroup = ElectiveChatGroup()
+        elective_chat_group.all_city = True
         elective_chat_group.chats = await postgres.get_chat_ids()
         place_advertisement_form.chats = elective_chat_group
         await open_pin_time_selection_menu_from_chat_selection()
@@ -154,6 +156,9 @@ async def handle_various_chat_selection(call: CallbackQuery, state: FSMContext):
         else:
             elective_chat_group: ElectiveChatGroup = ElectiveChatGroup()
             elective_chat_group.chats = various_chat_selection.selected_chats.copy()
+            if len(await postgres.get_chat_ids()) == len(elective_chat_group.chats):
+                elective_chat_group.all_city = True
+
             place_advertisement_form.chats = elective_chat_group
             menu_references.TO_PIN_TIME_SELECTION = call.data
 
@@ -309,7 +314,8 @@ async def handle_write_pin_days_count(message: Message, state: FSMContext):
         current_menu_message_id = new_message.message_id
 
     else:
-        return value
+        await message.answer("❌Количество дней не должно быть больше 31!")
+        await message.delete()
 
     await message.delete()
     await state.set_state(StateGroup.place_advertisement)
@@ -502,6 +508,7 @@ async def handle_write_message_to_place(message: Message, state: FSMContext, alb
 
         else:
             place_advertisement_form.message.message_id = message.message_id
+            place_advertisement_form.message.text = message.text
         has_media: bool = False
 
     encoded_place_advertisement_form: str = await tools.serializer.serialize(place_advertisement_form)
@@ -543,7 +550,6 @@ async def handle_back_from_attach_media(msg: Union[CallbackQuery, Message], stat
     place_advertisement_form: PlaceAdvertisementForm = await tools.deserializer.deserialize(
         encoded_place_advertisement_form
     )
-    place_advertisement_form.datetime = None
 
     has_media: bool = len(place_advertisement_form.message.album) != 0
 
@@ -724,8 +730,15 @@ async def handle_datetime_choice(message: Message, state: FSMContext):
     state_data["place_advertisement_form"] = encoded_place_advertisement_form
     await state.set_data(state_data)
 
-    moderation_request: ModerationRequest = ModerationRequest(form=encoded_place_advertisement_form)
+    moderation_request: ModerationRequest = ModerationRequest(
+        from_user=from_user.id,
+        form=encoded_place_advertisement_form
+    )
     await postgres.add_moderation_request(moderation_request)
+
+    redis: Redis = Redis.from_url(url=config.REDIS_URL)
+    admin_id = redis.get("admin")
+    redis.close()
 
     message_to_delete: Message = await message.answer(
         text="Загрузка...",
@@ -738,4 +751,8 @@ async def handle_datetime_choice(message: Message, state: FSMContext):
         reply_markup=InlineBuilder().get_back_button_keyboard()
     )
 
+    await bot.send_message(
+        chat_id=admin_id,
+        text="<b>У вас новый запрос на модерацию!</b>",
+    )
 

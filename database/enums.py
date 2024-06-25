@@ -8,6 +8,8 @@ class Roles(Enum):
 
 
 class ModerationStatus(Enum):
+    placed: Final[str] = "placed"
     approved: Final[str] = "approved"
     waiting: Final[str] = "waiting"
     declined: Final[str] = "declined"
+    canceled: Final[str] = "canceled"
