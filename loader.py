@@ -1,7 +1,7 @@
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types.bot_command import BotCommand
 from database.postgresql import PostgresManager
-from utils.scheduler.scheduler import Scheduler
+from utils.scheduler import Scheduler
 from aiogram.enums.parse_mode import ParseMode
 from aiogram import Bot, Dispatcher, Router
 from data.config import config

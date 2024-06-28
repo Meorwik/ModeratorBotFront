@@ -1,7 +1,14 @@
 from utils.marshalling_tools import Serializer, Deserializer
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Final
 from os import environ
+
+
+@dataclass
+class RedisJobStoreData:
+    HOST: Final[str] = environ.get("REDIS_JOB_STORE_HOST")
+    PORT: Final[int] = int(environ.get("REDIS_JOB_STORE_PORT"))
+    PASSWORD: Final[str] = environ.get("REDIS_JOB_STORE_PASSWORD")
 
 
 @dataclass
@@ -9,6 +16,7 @@ class Config:
     BOT_TOKEN: Final[str] = environ.get("BOT_TOKEN")
     POSTGRES_ENGINE: Final[str] = environ.get("POSTGRESQL_ENGINE")
     REDIS_URL: Final[str] = environ.get("REDIS_URL")
+    REDIS_JOB_STORE_DATA: Final[RedisJobStoreData] = field(default_factory=RedisJobStoreData)
     WEB_APP_URL: Final[str] = environ.get("WEB_APP_URL")
 
 
