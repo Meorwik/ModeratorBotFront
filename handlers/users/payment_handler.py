@@ -29,9 +29,6 @@ async def schedule_post_publication(moderated_advertisement_form):
     date = moderated_advertisement_form.advertisement_form.date
     time = moderated_advertisement_form.advertisement_form.time
 
-    date = "2024-07-02"
-    time = "11:15"
-
     task_datetime = datetime.strptime(
         f'{date} {time}',
         '%Y-%m-%d %H:%M'

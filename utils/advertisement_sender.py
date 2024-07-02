@@ -26,9 +26,6 @@ class AdvertisementSender:
         date = place_advertisement_form.date
         time = place_advertisement_form.time
 
-        date = "2024-07-02"
-        time = "09:12"
-
         task_datetime = datetime.strptime(
             f'{date} {time}',
             '%Y-%m-%d %H:%M'
