@@ -166,7 +166,26 @@ class FacadeKeyboard(InlineBuilder):
         return self._FACADE
 
 
-class PageableKeyboard(InlineBuilder):
+class DefaultPageableKeyboard(InlineBuilder):
+    
+    """
+    This class implements functionality of one or more pages with listable items in it.
+        
+        EXAMPLE: 
+              - item 1 -
+              - item 2 -
+              - item 3 -
+              - item 4 -
+              - item 5 -
+            
+        <<   *page_number*   >>  
+        
+    This is possible with abstract 'Separator'. 
+    Firstly you need to create all the buttons and pass them into 'buttons_storage'.
+    Then you pass 'max_elements_on_page' (DEFAULT: int = 5) 
+    
+    """ 
+    
     __name__: str = "PageableKeyboard"
 
     __MIN_PAGE_NUMBER: Final[int] = 1
@@ -229,4 +248,5 @@ class PageableKeyboard(InlineBuilder):
 
     def get_buttons_to_show(self):
         return self.buttons_storage[self._separator: self._separator + self._max_elements_on_page]
+
 

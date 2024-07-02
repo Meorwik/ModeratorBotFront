@@ -1,4 +1,4 @@
-from .base import InlineBuilder, FacadeKeyboard, PageableKeyboard
+from .base import InlineBuilder, FacadeKeyboard, DefaultPageableKeyboard
 from typing import Final, List, Dict, Union, Set
 from aiogram.types import InlineKeyboardButton
 from database.models import Chat, ChatGroup
@@ -79,7 +79,7 @@ class ChatSelectionBuilder(InlineBuilder):
         self.add(*chat_selection_buttons)
 
 
-class VariousChatSelectionBuilder(PageableKeyboard):
+class VariousChatSelectionBuilder(DefaultPageableKeyboard):
     __name__ = "VariousChatSelectionBuilder"
 
     _ADJUST_SIZES: List[int] = [1, 1, 1, 1, 1, 1, 1, 3]

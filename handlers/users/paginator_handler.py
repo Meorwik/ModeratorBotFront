@@ -1,5 +1,5 @@
 from keyboards.inline.callbacks import PaginationCallback
-from keyboards.inline.base import PageableKeyboard
+from keyboards.inline.base import DefaultPageableKeyboard
 from forms.enums import PaginationActionTypes
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
@@ -17,7 +17,7 @@ async def handle_menu_pagination(call: CallbackQuery, state: FSMContext):
     state_data = await state.get_data()
 
     encoded_paginator: str = state_data["pagination"]
-    paginator: PageableKeyboard = await tools.deserializer.deserialize(encoded_paginator)
+    paginator: DefaultPageableKeyboard = await tools.deserializer.deserialize(encoded_paginator)
 
     if callback_components.action == PaginationActionTypes.open_next_page:
         paginator.open_next_page()

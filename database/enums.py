@@ -13,3 +13,11 @@ class ModerationStatus(Enum):
     waiting: Final[str] = "waiting"
     declined: Final[str] = "declined"
     canceled: Final[str] = "canceled"
+
+
+class PostStatus(Enum):
+    placed: Final[str] = "placed"
+    deferred: Final[str] = "deferred"
+    deleted: Final[str] = "deleted"
+
+

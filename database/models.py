@@ -1,8 +1,8 @@
-from sqlalchemy import Column, String, Integer, Enum, Date, ForeignKey, JSON, BigInteger
+from sqlalchemy import String, Integer, Enum, Date, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship, mapped_column, Mapped
+from .enums import Roles, ModerationStatus, PostStatus
 from sqlalchemy.sql.functions import current_date
 from sqlalchemy.dialects.postgresql import ARRAY
-from .enums import Roles, ModerationStatus
 from typing import Final
 from .base import Base
 
@@ -22,7 +22,7 @@ class User(Base):
     register_date: Mapped[Date] = mapped_column(Date, default=current_date())
 
     def __repr__(self):
-        return f"User - {self.id}\nRole - {self.role}\nUserObject - ({id(self)})\n"
+        return f"User - {self.id} Role - {self.role}"
 
 
 class ChatGroup(Base):
@@ -36,7 +36,7 @@ class ChatGroup(Base):
     cost_of_one_day_pin: Mapped[int] = mapped_column(nullable=False)
 
     def __repr__(self):
-        return f"ChatGroupId - {self.id} Chats - {self.chats} ChatGroupObject - ({id(self)})"
+        return f"ChatGroupId - {self.id} Chats - {self.chats}"
 
 
 class Chat(Base):
@@ -47,21 +47,19 @@ class Chat(Base):
     link: Mapped[str] = mapped_column(nullable=False)
 
     def __repr__(self):
-        return f"Chat - {self.chat_id} ChatName - {self.chat_name} ChatObject - ({id(self)})"
+        return f"Chat - {self.chat_id} ChatName - {self.chat_name}"
 
 
-class Pin(Base):
-    __tablename__: str = 'Pins'
+class Post(Base):
+    __tablename__: str = 'Posts'
 
     id: Mapped[int] = mapped_column(autoincrement=True, nullable=False, primary_key=True)
-    user_id: Mapped[BigInteger] = mapped_column(BigInteger, ForeignKey(User.id), nullable=False)
+    job_id: Mapped[str] = mapped_column(unique=True, nullable=True)
+    status: Mapped[Enum] = mapped_column(Enum(PostStatus), nullable=False, default=PostStatus.deferred)
+    publish_date: Mapped[Date] = mapped_column(Date, nullable=False)
+    post: Mapped[str] = mapped_column(nullable=False)
     chats: Mapped[ARRAY] = mapped_column(ARRAY(String), nullable=False)
-    expiry_date: Mapped[Date] = mapped_column(Date, nullable=False)
-
-    user = relationship("User", foreign_keys=[user_id])
-
-    def __repr__(self):
-        return f"Pin - {self.id} User - {self.user_id} Chats - ({self.chats}) PinObject - ({id(self)})"
+    message_ids: Mapped[ARRAY] = mapped_column(ARRAY(BigInteger), nullable=True)
 
 
 class IncomeRecord(Base):

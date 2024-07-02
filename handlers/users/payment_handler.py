@@ -2,24 +2,61 @@ from keyboards.inline.keyboards import SelectPaymentMethodKeyboard, PaymentProvi
     InlineBuilder, PaymentCheckResultKeyboard
 from keyboards.inline.callbacks import ActionCallback, DataPassCallback
 from keyboards.inline.admin_keyboards import AcceptPaymentKeyboard
+from utils.advertisement_sender import AdvertisementSender
 from keyboards.default.keyboards import WebAppKeyboard
+from database.models import ModerationRequest, Post
 from forms.forms import ModeratedAdvertisementForm
 from aiogram.types import CallbackQuery, Message
 from forms.enums import AllowedCheckContentTypes
 from aiogram.types import ReplyKeyboardRemove
-from database.models import ModerationRequest
 from utils.price_counter import PriceCounter
 from database.enums import ModerationStatus
+from loader import postgres, bot, scheduler
 from aiogram.fsm.context import FSMContext
 from data.texts import templates, texts
 from aiogram.filters import StateFilter
 from data.config import meta, config
 from states.states import StateGroup
-from loader import postgres, bot
 from typing import Final, Dict
+from datetime import datetime
 from data.config import tools
 from aiogram import Router, F
 from redis import Redis
+
+
+async def schedule_post_publication(moderated_advertisement_form):
+    advertisement_sender: AdvertisementSender = AdvertisementSender()
+    date = moderated_advertisement_form.advertisement_form.date
+    time = moderated_advertisement_form.advertisement_form.time
+
+    date = "2024-07-02"
+    time = "11:15"
+
+    task_datetime = datetime.strptime(
+        f'{date} {time}',
+        '%Y-%m-%d %H:%M'
+    )
+
+    encoded_advertisement_form: str = await tools.serializer.serialize(moderated_advertisement_form.advertisement_form)
+    publish_date = datetime.strptime(moderated_advertisement_form.advertisement_form.date, '%Y-%m-%d')
+    post: Post = Post(
+        publish_date=publish_date,
+        post=encoded_advertisement_form,
+        chats=moderated_advertisement_form.advertisement_form.chats.chats,
+    )
+    post: Post = await postgres.add_post(post)
+
+    job = scheduler.engine.add_job(
+        func=advertisement_sender.place_advertisement,
+        trigger="date",
+        run_date=task_datetime,
+        coalesce=True,
+        args=(
+            post.id,
+        )
+    )
+
+    await postgres.add_job_id(post_id=post.id, job_id=job.id)
 
 
 payment_router: Final[Router] = Router(name="payment")
@@ -164,11 +201,8 @@ async def handle_payment_check_result(call: CallbackQuery, state: FSMContext):
         )
 
         await state.clear()
-        print(moderated_advertisement_form)
-        """
-                SCHEDULER PART 
-        """
-        ...
+
+        await schedule_post_publication(moderated_advertisement_form)
 
 
 @payment_router.message(
@@ -199,10 +233,10 @@ async def handle_datetime_choice(message: Message, state: FSMContext):
         text=texts.get("finish_all_stages"),
         reply_markup=InlineBuilder().get_keyboard()
     )
-    print(moderated_advertisement_form)
+    await state.clear()
 
-    ...
-    """
-            SCHEDULER PART 
-    """
+    await schedule_post_publication(moderated_advertisement_form)
+
+
+
 

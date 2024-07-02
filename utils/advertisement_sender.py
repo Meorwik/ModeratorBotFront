@@ -1,12 +1,14 @@
 from keyboards.inline.admin_keyboards import AdminModerationKeyboard
-from aiogram.types import InputMediaPhoto, InputMediaVideo
+from aiogram.types import InputMediaPhoto, InputMediaVideo, Message
+from forms.forms import PlaceAdvertisementForm, MessageToPlaceForm
 from keyboards.inline.callbacks import BackCallback
-from forms.forms import PlaceAdvertisementForm
+from loader import bot, postgres, scheduler
 from forms.forms import ElectiveChatGroup
+from datetime import datetime, timedelta
 from forms.enums import PlacementTypes
+from database.enums import PostStatus
 from typing import Union, Final, List
 from database.models import Chat
-from loader import bot, postgres
 from data.texts import templates
 from data.config import tools
 from data.texts import texts
@@ -14,63 +16,68 @@ from data.texts import texts
 
 class AdvertisementSender:
 
-    async def send_advertisement(
-            self,
-            chat_id: Union[str, int],
-            place_advertisement_form: Union[PlaceAdvertisementForm, str],
-            text: str = None
+    async def unpin_chat_message(self, chat_id: int, message_id: int):
+        await bot.unpin_chat_message(chat_id, message_id)
+
+    async def __setup_unpin_message_task(
+            self, place_advertisement_form: PlaceAdvertisementForm,
+            chat_id: int, message_id: int
     ):
+        date = place_advertisement_form.date
+        time = place_advertisement_form.time
 
-        if isinstance(place_advertisement_form, str):
-            place_advertisement_form = await self.__convert_to_form_object(place_advertisement_form)
+        date = "2024-07-02"
+        time = "09:12"
 
-        if place_advertisement_form.placement_type == PlacementTypes.message_from_bot:
-            if place_advertisement_form.message.album:
-                media = [
-                    InputMediaVideo(media=media.video, caption=media.caption)
-                    if media.video else
-                    InputMediaPhoto(media=media.photo, caption=media.caption)
-                    for media in place_advertisement_form.message.album
-                ]
-                if text:
-                    media[0].caption = text
+        task_datetime = datetime.strptime(
+            f'{date} {time}',
+            '%Y-%m-%d %H:%M'
+        ) + timedelta(days=place_advertisement_form.pin_days)
 
-                await bot.send_media_group(
-                    chat_id=chat_id,
-                    media=media
-                )
+        scheduler.engine.add_job(
+            func=self.unpin_chat_message,
+            trigger="date",
+            run_date=task_datetime,
+            coalesce=True,
+            args=(chat_id, message_id)
+        )
 
-            elif place_advertisement_form.message.is_document:
-                if text:
-                    caption: str = text
+    async def __send_media_group(self, chat_id: int, message: MessageToPlaceForm) -> Message:
+        media = [
+            InputMediaVideo(media=media.video, caption=media.caption)
+            if media.video else
+            InputMediaPhoto(media=media.photo, caption=media.caption)
+            for media in message.album
+        ]
 
-                else:
-                    caption: str = place_advertisement_form.message.text
+        sent_message: Message = await bot.send_media_group(
+            chat_id=chat_id,
+            media=media
+        )
+        return sent_message
 
-                await bot.send_document(
-                    chat_id=chat_id,
-                    document=place_advertisement_form.message.document,
-                    caption=caption
-                )
+    async def __send_document(self, chat_id: int, message: MessageToPlaceForm) -> Message:
+        sent_message: Message = await bot.send_document(
+            chat_id=chat_id,
+            document=message.document,
+            caption=message.text
+        )
+        return sent_message
 
-            else:
-                if text:
-                    caption: str = text
+    async def __send_only_text(self, chat_id: int, message: MessageToPlaceForm) -> Message:
+        sent_message: Message = await bot.send_message(
+            chat_id=chat_id,
+            text=message.text
+        )
+        return sent_message
 
-                else:
-                    caption: str = place_advertisement_form.message.text
-
-                await bot.send_message(
-                    chat_id=chat_id,
-                    text=caption
-                )
-
-        else:
-            await bot.forward_message(
-                chat_id=chat_id,
-                from_chat_id=place_advertisement_form.message.from_user.id,
-                message_id=place_advertisement_form.message.message_id
-            )
+    async def __forward_message(self, chat_id: int, message: MessageToPlaceForm) -> Message:
+        sent_message: Message = await bot.forward_message(
+            chat_id=chat_id,
+            from_chat_id=message.from_user.id,
+            message_id=message.message_id
+        )
+        return sent_message
 
     async def __convert_to_form_object(self, place_advertisement_form: str):
         place_advertisement_form: PlaceAdvertisementForm = await tools.deserializer.deserialize(
@@ -82,7 +89,7 @@ class AdvertisementSender:
         chats: List[Chat] = [await postgres.get_chat(chat_id=chat_id) for chat_id in chat_ids]
         return [chat.chat_name for chat in chats]
 
-    async def __add_moderator_text(self, place_advertisement_form: PlaceAdvertisementForm):
+    async def get_post_info(self, place_advertisement_form: PlaceAdvertisementForm):
         if isinstance(place_advertisement_form.chats, ElectiveChatGroup):
             if place_advertisement_form.chats.all_city:
                 chat_names: str = "<b>Весь город</b>"
@@ -96,7 +103,7 @@ class AdvertisementSender:
         else:
             chat_names: str = place_advertisement_form.chats.name
 
-        empty_template: str = templates.get("moderation_text")
+        empty_template: str = templates.get("post_info")
         filled_template = empty_template.format(
             username=place_advertisement_form.message.from_user.username,
             date=place_advertisement_form.date,
@@ -105,6 +112,81 @@ class AdvertisementSender:
             chats=chat_names,
         )
         return filled_template
+
+    async def __get_method(self, place_advertisement_form: PlaceAdvertisementForm):
+        if place_advertisement_form.placement_type == PlacementTypes.message_from_bot:
+            if place_advertisement_form.message.album:
+                return self.__send_media_group
+
+            elif place_advertisement_form.message.is_document:
+                return self.__send_document
+
+            else:
+                return self.__send_only_text
+
+        else:
+            return self.__forward_message
+
+    async def place_advertisement(self, post_id: int):
+        post = await postgres.get_post(post_id)
+        place_advertisement_form = await self.__convert_to_form_object(post.post)
+
+        send = await self.__get_method(place_advertisement_form)
+
+        messages_ids: List[int] = []
+
+        if place_advertisement_form.pin_days > 0:
+            for chat_id in place_advertisement_form.chats.chats:
+                chat_id: int = int("-100" + chat_id)
+                sent_message: Message = await send(chat_id, place_advertisement_form.message)
+
+                if isinstance(sent_message, list):
+                    await bot.pin_chat_message(
+                        chat_id=sent_message[0].chat.id,
+                        message_id=sent_message[0].message_id,
+                    )
+
+                    await self.__setup_unpin_message_task(
+                        place_advertisement_form=place_advertisement_form,
+                        chat_id=chat_id,
+                        message_id=sent_message[0].message_id
+                    )
+                    messages_ids.append(sent_message[0].message_id)
+
+                else:
+                    await bot.pin_chat_message(
+                        chat_id=sent_message.chat.id,
+                        message_id=sent_message.message_id,
+                    )
+
+                    await self.__setup_unpin_message_task(
+                        place_advertisement_form=place_advertisement_form,
+                        chat_id=chat_id,
+                        message_id=sent_message.message_id
+                    )
+                    messages_ids.append(sent_message.message_id)
+
+        else:
+            for chat_id in place_advertisement_form.chats.chats:
+                chat_id: int = int("-100" + chat_id)
+                sent_message: Message = await send(chat_id, place_advertisement_form.message)
+                messages_ids.append(sent_message.message_id)
+
+        await postgres.add_messages_ids(post_id, messages_ids)
+        await postgres.change_post_status(post_id, PostStatus.placed)
+        await postgres.delete_job_id(post_id)
+
+    async def send_advertisement(
+            self,
+            chat_id: Union[str, int],
+            place_advertisement_form: Union[PlaceAdvertisementForm, str],
+    ):
+
+        if isinstance(place_advertisement_form, str):
+            place_advertisement_form = await self.__convert_to_form_object(place_advertisement_form)
+
+        send = await self.__get_method(place_advertisement_form)
+        await send(chat_id, place_advertisement_form.message)
 
     async def send_to_admin_on_moderation(
             self,
@@ -115,14 +197,13 @@ class AdvertisementSender:
         if isinstance(place_advertisement_form, str):
             place_advertisement_form = await self.__convert_to_form_object(place_advertisement_form)
 
-        moderation_info: str = await self.__add_moderator_text(
+        moderation_info: str = "Объявление на модерацию:\n" + await self.get_post_info(
             place_advertisement_form=place_advertisement_form
         )
 
         await self.send_advertisement(
             chat_id=admin_id,
             place_advertisement_form=place_advertisement_form,
-            text=place_advertisement_form.message.text
         )
 
         moderation_keyboard: Final[AdminModerationKeyboard] = AdminModerationKeyboard()
@@ -131,4 +212,5 @@ class AdvertisementSender:
             text=moderation_info + texts.get("request_admin_moderation_decision"),
             reply_markup=moderation_keyboard.get_keyboard(BackCallback(go_to="AdminMainMenu").pack())
         )
+
         del moderation_keyboard

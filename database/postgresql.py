@@ -1,10 +1,10 @@
-from .models import User, Pin, Chat, ChatGroup, IncomeRecord, PublicationRecord, ModerationRequest
-from .enums import ModerationStatus, Roles
-from sqlalchemy.sql import select, delete, update
-from typing import Final, Union, List
-from sqlalchemy import func
-from .base import DatabaseManager, Base
+from .models import User, Post, Chat, ChatGroup, IncomeRecord, PublicationRecord, ModerationRequest
+from .enums import ModerationStatus, Roles, PostStatus
+from sqlalchemy.sql import select, update, delete
 from datetime import datetime, date, timedelta
+from .base import DatabaseManager, Base
+from typing import Final, Union, List
+from sqlalchemy import func, extract
 
 
 class PostgresManager(DatabaseManager):
@@ -127,18 +127,79 @@ class PostgresManager(DatabaseManager):
             result = await session.execute(query)
             return result.scalars().all()
 
-    async def add_chat(self, chat: Chat) -> bool:
+    """
+                        ACTIONS WITH POSTS
+    """
+    async def get_post(self, post_id: int) -> Post:
         async with self.Session() as session:
-            session.add(chat)
-            session.commit()
+            query = select(Post).where(Post.id == post_id)
+            result = await session.execute(query)
+            return result.scalars().one()
 
-        return True
+    async def delete_post(self, post_id: int):
+        async with self.Session() as session:
+            query = delete(Post).where(Post.id == post_id)
+            await session.execute(query)
+            await session.commit()
 
-    """
-                        ACTIONS WITH PINS
-    """
-    async def add_pin(self, pin: Pin):
-        ...
+    async def add_post(self, post: Post) -> Post:
+        async with self.Session() as session:
+            session.add(post)
+            await session.commit()
+            await session.refresh(post)
+            return post
+
+    async def add_job_id(self, post_id: int, job_id: str):
+        async with self.Session() as session:
+            query = update(Post).where(
+                Post.id == post_id
+            ).values(job_id=job_id)
+
+            await session.execute(query)
+            await session.commit()
+
+    async def change_post_status(self, post_id: int, status: PostStatus):
+        async with self.Session() as session:
+            query = update(Post).where(
+                Post.id == post_id
+            ).values(status=status)
+            await session.execute(query)
+            await session.commit()
+
+    async def add_messages_ids(self, post_id: int, message_ids: List[int]):
+        async with self.Session() as session:
+            query = update(Post).where(
+                Post.id == post_id
+            ).values(message_ids=message_ids)
+            await session.execute(query)
+            await session.commit()
+
+    async def delete_job_id(self, post_id: int):
+        async with self.Session() as session:
+            query = update(Post).where(
+                Post.id == post_id
+            ).values(job_id=None)
+            await session.execute(query)
+            await session.commit()
+
+    async def get_month_posts(self, month: int) -> List[Post]:
+        async with self.Session() as session:
+            query = select(Post).where(
+                extract('month', Post.publish_date) == month,
+                Post.status == PostStatus.deferred
+            )
+            result = await session.execute(query)
+            return result.scalars().all()
+
+    async def get_posts_by_date(self, year: int, month: int, day: int) -> List[Post]:
+        async with self.Session() as session:
+            query = select(Post).where(
+                extract('year', Post.publish_date) == year,
+                extract('month', Post.publish_date) == month,
+                extract('day', Post.publish_date) == day
+            )
+            result = await session.execute(query)
+            return result.scalars().all()
 
     async def count_all_posts(self) -> int:
         async with self.Session() as session:
@@ -219,7 +280,7 @@ class PostgresManager(DatabaseManager):
         async with self.Session() as session:
             query = select(func.sum(IncomeRecord.income_sum))
             result = await session.execute(query)
-            return result.scalars().one_or_none()
+            return result.scalars().one()
 
     async def count_month_income(self) -> int:
         async with self.Session() as session:
@@ -229,7 +290,7 @@ class PostgresManager(DatabaseManager):
                 IncomeRecord.date >= start_of_month
             )
             result = await session.execute(query)
-            return result.scalars().one_or_none()
+            return result.scalars().one()
 
     async def count_week_income(self) -> int:
         async with self.Session() as session:
@@ -239,7 +300,7 @@ class PostgresManager(DatabaseManager):
                 IncomeRecord.date >= start_of_week
             )
             result = await session.execute(query)
-            return result.scalars().one_or_none()
+            return result.scalars().one()
 
     async def count_day_income(self) -> int:
         async with self.Session() as session:
@@ -248,5 +309,13 @@ class PostgresManager(DatabaseManager):
                 IncomeRecord.date == today
             )
             result = await session.execute(query)
-            return result.scalars().one_or_none()
+            return result.scalars().one()
 
+    """
+                    ACTIONS WITH INCOME
+    """
+
+    async def add_income_record(self, income_record: IncomeRecord):
+        async with self.Session() as session:
+            session.add(income_record)
+            await session.commit()

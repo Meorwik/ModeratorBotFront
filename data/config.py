@@ -62,6 +62,9 @@ class MenuReferences:
 class AdminMenuReferences:
     TO_POST_MODERATION: str = ""
     TO_STATISTICS_MENU: str = ""
+    TO_CALENDAR_MENU: str = ""
+    TO_POST_SELECTION: str = ""
+    TO_POST_INFO: str = ""
 
 
 @dataclass

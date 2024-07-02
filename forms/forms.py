@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
+from database.enums import PostStatus
 from database.models import ChatGroup
 from .enums import PlacementTypes
 from aiogram.types import Message
+from datetime import datetime
 from typing import List, Union
 from .base import Form
 
@@ -48,3 +50,14 @@ class PlaceAdvertisementForm(Form):
 class ModeratedAdvertisementForm(Form):
     request_id: int
     advertisement_form: PlaceAdvertisementForm
+
+
+@dataclass
+class DecodedPost(Form):
+    id: int
+    job_id: str
+    status: PostStatus
+    publish_date: datetime
+    post: PlaceAdvertisementForm
+    chats: List[int]
+    message_ids: List[int]

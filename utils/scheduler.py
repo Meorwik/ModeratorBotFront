@@ -1,9 +1,10 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.redis import RedisJobStore
-from data.config import config
 from datetime import datetime, timedelta
-from typing import Dict, Final
 from redis.asyncio import Redis
+from data.config import config
+from typing import Dict, Final
+from pytz import timezone
 import asyncio
 
 
@@ -24,15 +25,21 @@ class Scheduler:
         return jobstores
 
     def __setup_job_defaults(self):
-        job_defaults = {'misfire_grace_time': 3}
+        job_defaults = {'misfire_grace_time': 5}
         return job_defaults
+
+    def __setup_timezone(self):
+        tz = timezone('Etc/GMT-5')
+        return tz
 
     def __init__(self):
         jobstores: Dict = self.__setup_redis_job_store()
         job_defaults: Dict = self.__setup_job_defaults()
+        scheduler_timezone = self.__setup_timezone()
         self.__scheduler: AsyncIOScheduler = AsyncIOScheduler(
             jobstores=jobstores,
-            job_defaults=job_defaults
+            job_defaults=job_defaults,
+            timezone=scheduler_timezone
         )
 
     @property

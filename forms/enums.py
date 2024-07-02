@@ -57,3 +57,4 @@ class AllowedCheckContentTypes(Enum):
     photo: ContentType.PHOTO = ContentType.PHOTO
     document: ContentType.DOCUMENT = ContentType.DOCUMENT
 
+

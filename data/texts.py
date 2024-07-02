@@ -157,8 +157,7 @@ choose_publish_datetime: Final[str] = """
 дату публикации ⏰
 """
 
-moderation_text: Final[str] = """
-Объявление на модерацию:
+post_info: Final[str] = """
 От пользователя: <b>@{username}</b>
 Дата: <b>{date}</b>
 Время: <b>{time}</b>
@@ -339,12 +338,22 @@ finish_payment: Final[str] = """
 
 finish_all_stages: Final[str] = """
 Благодарю вас за пользование
-нашими услугами! После 
-публикации объявления я вас
-уведомлю.
+нашими услугами!
 
 Вы можете создать до 5 ожида
 ющих публикаций.
+"""
+
+post_cancellation_confirm: Final[str] = """
+Вы точно хотите отменить 
+публикацию?
+"""
+
+modify_post: Final[str] = """
+Пришлите измененный текст публикации.
+
+Все медиа-файлы нужно будет
+прикрепить заново.
 """
 
 texts: Final[Dict] = {
@@ -375,7 +384,9 @@ texts: Final[Dict] = {
     "admin_checks_payment_text": admin_checks_payment_text,
     "failed_payment": failed_payment,
     "finish_payment": finish_payment,
-    "finish_all_stages": finish_all_stages
+    "finish_all_stages": finish_all_stages,
+    "post_cancellation_confirm": post_cancellation_confirm,
+    "modify_post": modify_post
 
 }
 
@@ -383,7 +394,7 @@ templates: Final[Dict] = {
     "placement_type_selection": placement_type_selection,
     "reposted_message_requirements": reposted_message_requirements,
     "complete_place_advertisement": complete_place_advertisement,
-    "moderation_text": moderation_text,
+    "post_info": post_info,
     "admin_greeting": admin_greeting,
     "post_declined": post_declined,
 

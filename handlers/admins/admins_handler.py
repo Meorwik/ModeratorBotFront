@@ -1,28 +1,37 @@
 from keyboards.inline.admin_keyboards import AdminMainMenuKeyboard, AdminModerationKeyboard, DeclinedPostKeyboard, \
-    InlineBuilder, ContinueModerationKeyboard, StatisticsKeyboard, AcceptPaymentKeyboard
+    InlineBuilder, ContinueModerationKeyboard, StatisticsKeyboard, AcceptPaymentKeyboard, CalendarKeyboard, \
+    PostSelectionKeyboard, PostInteractionKeyboard, PostCancellationConfirmKeyboard, PostModifyKeyboard, \
+    PinTimeSelectionBuilder
 from keyboards.inline.keyboards import SelectPaymentMethodKeyboard, PaymentCheckResultKeyboard
 from keyboards.inline.callbacks import AdminCallback, BackCallback, DataPassCallback
-from database.models import ModerationRequest, ModerationStatus
+from forms.forms import ModeratedAdvertisementForm, PlaceAdvertisementForm, ElectiveChatGroup, DecodedPost
+from database.models import ModerationRequest, ModerationStatus, Chat, IncomeRecord, Post
+from middlewares.album_middleware import AlbumMiddleware, AlbumMedia
 from utils.advertisement_sender import AdvertisementSender
-from forms.forms import ModeratedAdvertisementForm
+from utils.validators.media_validator import MediaValidator
+from utils.validators.str_validator import StringValidator
+from utils.validators.int_validator import IntegerValidator
+from forms.enums import PlacementTypes, AllowedContentTypes
+from handlers.users.place_advertisement_handler import get_message_text
+from data.config import tools, AdminMenuReferences
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, Message
-from forms.forms import PlaceAdvertisementForm
-from data.config import AdminMenuReferences
+from loader import bot, postgres, scheduler
 from aiogram.fsm.context import FSMContext
-from forms.forms import ElectiveChatGroup
 from aiogram.filters import StateFilter
 from data.texts import texts, templates
+from database.enums import PostStatus
+from typing import Final, Dict, List
 from states.states import StateGroup
-from typing import Final, Dict
-from data.config import tools
-from loader import postgres
-from aiogram import Router
-from loader import bot
-from aiogram import F
+from datetime import datetime
+from aiogram import F, Router
+import re
 
 
 admin_router: Final[Router] = Router(name="admin")
+message_input_router: Final[Router] = Router(name="messages")
+message_input_router.message.middleware(AlbumMiddleware())
+admin_router.include_router(message_input_router)
 
 
 async def get_main_admin_menu_text(call: CallbackQuery):
@@ -83,7 +92,21 @@ async def handle_main_admin_menu(call: CallbackQuery, state: FSMContext):
         )
 
     elif callback_components.action == "placements":
-        ...
+        now = datetime.now()
+        month: int = now.month
+        year: int = now.year
+        posts: List[Post] = await postgres.get_month_posts(month)
+        post_schedule: List[str] = [str(int(datetime.strftime(post.publish_date, "%Y-%m-%d")[-2:])) for post in posts]
+
+        await call.message.edit_text(
+            text="Календарь размещений",
+            reply_markup=CalendarKeyboard(
+                year=year,
+                month=month,
+                post_schedule=post_schedule
+            ).get_keyboard(BackCallback(go_to="AdminMainMenu").pack())
+        )
+        admin_menu_references.TO_CALENDAR_MENU = call.data
 
     elif callback_components.action == "start_moderation":
         admin_menu_references.TO_POST_MODERATION = call.data
@@ -113,6 +136,15 @@ async def handle_post_moderation(call: CallbackQuery, state: FSMContext):
     admin_menu_references: AdminMenuReferences = await tools.deserializer.deserialize(encoded_admin_menu_references)
 
     if callback_components.action == "approved":
+        try:
+            await bot.delete_message(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id - 1
+            )
+
+        except TelegramBadRequest:
+            pass
+
         await postgres.change_moderation_request_status(
             moderation_request_id=current_moderation_request.id,
             status=ModerationStatus.approved
@@ -256,9 +288,12 @@ async def handle_payment_delivery(call: CallbackQuery, state: FSMContext):
             if moderated_advertisement_form.advertisement_form.chats.all_city:
                 chat_name: str = "Весь город"
             else:
-                chat_name: str = str(
-                    moderated_advertisement_form.advertisement_form.chats.chats
-                ).replace("[", "").replace("]", "")
+                chats: List[Chat] = [
+                    await postgres.get_chat(chat_id=chat_id)
+                    for chat_id in moderated_advertisement_form.advertisement_form.chats.chats
+                ]
+                chat_names: List[str] = [chat.chat_name for chat in chats]
+                chat_name: str = str(chat_names).replace("[", "").replace("]", "")
 
         else:
             chat_name: str = moderated_advertisement_form.advertisement_form.chats.name
@@ -279,6 +314,11 @@ async def handle_payment_delivery(call: CallbackQuery, state: FSMContext):
             show_alert=True
         )
         await call.message.delete()
+
+        match = re.search(r"на (\d+) руб", call.message.text)
+        total_sum: int = int(match.group(1))
+        income_record: IncomeRecord = IncomeRecord(income_sum=total_sum)
+        await postgres.add_income_record(income_record)
 
     elif callback_components.action == "failed_payment":
         await bot.send_message(
@@ -302,4 +342,490 @@ async def handle_payment_delivery(call: CallbackQuery, state: FSMContext):
     except TelegramBadRequest:
         pass
 
+    await state.set_data(state_data)
+
+
+@admin_router.callback_query(DataPassCallback.filter(F.menu_level == CalendarKeyboard.get_menu_level()))
+async def handle_calendar(call: CallbackQuery, state: FSMContext):
+    callback_components: DataPassCallback = DataPassCallback.unpack(call.data)
+    state_data: Dict = await state.get_data()
+
+    encoded_admin_menu_references: str = state_data["admin_menu_references"]
+    admin_menu_references: AdminMenuReferences = await tools.deserializer.deserialize(encoded_admin_menu_references)
+
+    if callback_components.action == "next" or callback_components.action == "prev":
+        year, month = callback_components.data.split("_")
+        year, month = int(year), int(month)
+
+        if callback_components.action == "next":
+            if month == 12:
+                year += 1
+                month = 1
+
+            else:
+                month += 1
+
+        elif callback_components.action == "prev":
+            if month == 1:
+                year -= 1
+                month = 12
+
+            else:
+                month -= 1
+
+        posts: List[Post] = await postgres.get_month_posts(month)
+        post_schedule: List[str] = [str(int(datetime.strftime(post.publish_date, "%Y-%m-%d")[-2:])) for post in posts]
+
+        await call.message.edit_reply_markup(
+            reply_markup=CalendarKeyboard(
+                year=year,
+                month=month,
+                post_schedule=post_schedule
+            ).get_keyboard(BackCallback(go_to="AdminMainMenu").pack())
+        )
+
+    elif callback_components.action == "date":
+        year, month, day = callback_components.data.split("-")
+
+        year: int = int(year)
+        month: int = int(month)
+        day: int = int(day)
+
+        posts: List[Post] = await postgres.get_posts_by_date(year, month, day)
+        decoded_posts: List[DecodedPost] = [
+            DecodedPost(
+                id=post.id,
+                job_id=post.job_id,
+                status=post.status,
+                publish_date=post.publish_date,
+                post=await tools.deserializer.deserialize(post.post),
+                chats=post.chats,
+                message_ids=post.message_ids
+            )
+            for post in
+            posts
+        ]
+
+        post_selection: PostSelectionKeyboard = PostSelectionKeyboard(decoded_posts)
+        await call.message.edit_text(
+            text=f"Список публикаций на {callback_components.data}",
+            reply_markup=post_selection.get_keyboard(admin_menu_references.TO_CALENDAR_MENU)
+        )
+
+        admin_menu_references.TO_POST_SELECTION = call.data
+
+        encoded_admin_menu_references: str = await tools.serializer.serialize(admin_menu_references)
+        encoded_post_selection: str = await tools.serializer.serialize(post_selection)
+
+        state_data["pagination"] = encoded_post_selection
+        state_data["admin_menu_references"] = encoded_admin_menu_references
+        await state.set_data(state_data)
+
+    elif callback_components.action == "ignore":
+        await call.answer(show_alert=True, text="Выберите день")
+
+
+@admin_router.callback_query(DataPassCallback.filter(F.menu_level == PostSelectionKeyboard.get_menu_level()))
+async def handle_post_selection(call: CallbackQuery, state: FSMContext):
+    callback_components: DataPassCallback = DataPassCallback.unpack(call.data)
+    state_data: Dict = await state.get_data()
+
+    encoded_admin_menu_references: str = state_data["admin_menu_references"]
+    admin_menu_references: AdminMenuReferences = await tools.deserializer.deserialize(encoded_admin_menu_references)
+
+    if callback_components.action == "post":
+
+        post_id: int = int(callback_components.data)
+        post: Post = await postgres.get_post(post_id)
+        decoded_post: DecodedPost = DecodedPost(
+            id=post.id,
+            job_id=post.job_id,
+            status=post.status,
+            publish_date=post.publish_date,
+            post=await tools.deserializer.deserialize(post.post),
+            chats=post.chats,
+            message_ids=post.message_ids
+        )
+
+        text_to_show_limit: Final[int] = 50
+        advertisement_sender: AdvertisementSender = AdvertisementSender()
+        post_info: str = await advertisement_sender.get_post_info(decoded_post.post)\
+                         + decoded_post.post.message.text[:text_to_show_limit]
+        await call.message.edit_text(
+            text=post_info,
+            reply_markup=PostInteractionKeyboard(
+                is_forward=decoded_post.post.message.is_forward
+            ).get_keyboard(admin_menu_references.TO_POST_SELECTION)
+        )
+
+        admin_menu_references.TO_POST_INFO = call.data
+
+        encoded_post: str = await tools.serializer.serialize(decoded_post)
+        encoded_admin_menu_references: str = await tools.serializer.serialize(admin_menu_references)
+
+        state_data["admin_menu_references"] = encoded_admin_menu_references
+        state_data["current_post"] = encoded_post
+
+        await state.set_data(state_data)
+        await state.set_state(StateGroup.in_post_settings)
+
+    else:
+        await call.answer("Похоже что здесь пусто...")
+
+
+@admin_router.callback_query(AdminCallback.filter(F.menu_level == PostInteractionKeyboard.get_menu_level()))
+async def handle_post_interaction(call: CallbackQuery, state: FSMContext):
+    callback_components: AdminCallback = AdminCallback.unpack(call.data)
+    state_data: Dict = await state.get_data()
+
+    encoded_admin_menu_references: str = state_data["admin_menu_references"]
+    admin_menu_references: AdminMenuReferences = await tools.deserializer.deserialize(encoded_admin_menu_references)
+
+    if callback_components.action == "modify":
+        await call.message.edit_text(
+            text=texts.get("modify_post"),
+            reply_markup=InlineBuilder().get_back_button_keyboard(admin_menu_references.TO_POST_INFO)
+        )
+        await state.set_state(StateGroup.in_post_modify)
+
+    elif callback_components.action == "cancel_post":
+        await call.message.edit_text(
+            text=texts.get("post_cancellation_confirm"),
+            reply_markup=PostCancellationConfirmKeyboard().get_keyboard(admin_menu_references.TO_POST_INFO)
+        )
+
+
+@admin_router.callback_query(AdminCallback.filter(F.menu_level == PostCancellationConfirmKeyboard.get_menu_level()))
+async def handle_cancellation_confirm(call: CallbackQuery, state: FSMContext):
+    callback_components: AdminCallback = AdminCallback.unpack(call.data)
+    state_data: Dict = await state.get_data()
+
+    encoded_post: str = state_data["current_post"]
+    encoded_admin_menu_references: str = state_data["admin_menu_references"]
+
+    admin_menu_references: AdminMenuReferences = await tools.deserializer.deserialize(encoded_admin_menu_references)
+    post: DecodedPost = await tools.deserializer.deserialize(encoded_post)
+
+    if callback_components.action == "cancel":
+        if post.status == PostStatus.deferred:
+            scheduler.engine.remove_job(post.job_id)
+            await postgres.delete_post(post.id)
+
+        await call.message.edit_text(
+            text="Пост был успешно отменен!✅",
+            reply_markup=InlineBuilder().get_back_button_keyboard(admin_menu_references.TO_POST_SELECTION)
+        )
+
+
+@message_input_router.message(StateFilter(StateGroup.in_post_modify))
+async def handle_write_message_to_place(message: Message, state: FSMContext, album: List[AlbumMedia] = None):
+    state_data: Dict = await state.get_data()
+
+    encoded_post: str = state_data["current_post"]
+    encoded_admin_menu_references: str = state_data["admin_menu_references"]
+
+    admin_menu_references: AdminMenuReferences = await tools.deserializer.deserialize(encoded_admin_menu_references)
+    post: DecodedPost = await tools.deserializer.deserialize(encoded_post)
+
+    media_validator: MediaValidator = MediaValidator()
+    placement_type: PlacementTypes = post.post.placement_type
+    got_message: bool = True
+
+    if placement_type == PlacementTypes.message_from_bot:
+        post.post.message.is_forward = False
+        post.post.message.album = []
+        post.post.message.is_document = False
+
+        if album:
+            max_text_length: int = 900
+            post.post.message.album = album
+
+        elif media_validator.has_media(message):
+            max_text_length: int = 900
+            is_valid: bool = media_validator.validate(message)
+
+            if is_valid:
+
+                if message.photo:
+                    post.post.message.album.append(
+                        AlbumMedia(photo=message.photo[-1].file_id, caption=message.caption)
+                    )
+
+                elif message.video:
+                    post.post.message.album.append(
+                        AlbumMedia(video=message.video.file_id, caption=message.caption)
+                    )
+
+                elif message.document is not None:
+                    post.post.message.is_document = True
+                    post.post.message.document = message.document.file_id
+
+            else:
+                got_message: bool = False
+                await message.answer(
+                    """
+                    Данный тип медиа не поддерживается ❌
+                    """
+                )
+                await message.delete()
+
+        else:
+            max_text_length: int = 4000
+
+        text: str = await get_message_text(message, album)
+
+        if text is not None:
+            str_validator: StringValidator = StringValidator(
+                max_string_length=max_text_length
+            )
+
+            is_valid: bool = str_validator.validate(text)
+
+            if is_valid:
+                post.post.message.text = text
+
+            else:
+                got_message: bool = False
+                await message.answer(
+                    """
+                    Ваше сообщение слишком большое ❌\nПожалуйста убедитесь в том, 
+                    что ваше сообщение соответствует требованиям выше.
+                    """
+                )
+
+        has_media: bool = len(post.post.message.album) != 0
+
+    else:
+        post.post.message.is_forward = True
+        if album:
+            got_message: bool = False
+            await message.answer(
+                """
+                Ваше сообщение имеет больше одного медиа-файла ❌\nПожалуйста убедитесь в том, 
+                что ваше сообщение соответствует требованиям выше.
+                """
+            )
+            await message.delete()
+
+        else:
+            post.post.message.message_id = message.message_id
+            post.post.message.text = message.text
+        has_media: bool = False
+
+    encoded_post: str = await tools.serializer.serialize(post)
+    state_data["current_post"] = encoded_post
+    await state.set_data(state_data)
+
+    final_keyboard: PostModifyKeyboard = \
+        PostModifyKeyboard(
+            has_media=has_media,
+            is_document=post.post.message.is_document
+        )
+
+    if got_message:
+        await message.answer(
+            text=texts.get("check_post_details").format(text=post.post.message.text),
+            reply_markup=final_keyboard.get_keyboard(admin_menu_references.TO_POST_INFO)
+        )
+
+        await state.set_state(StateGroup.place_advertisement)
+
+    else:
+        return None
+
+
+@admin_router.callback_query(AdminCallback.filter(F.menu_level == PostModifyKeyboard.get_menu_level()))
+async def handle_post_modify(call: CallbackQuery, state: FSMContext):
+    callback_components: AdminCallback = AdminCallback.unpack(call.data)
+    state_data: Dict = await state.get_data()
+    encoded_post: str = state_data["current_post"]
+    encoded_admin_menu_references: str = state_data["admin_menu_references"]
+
+    admin_menu_references: AdminMenuReferences = await tools.deserializer.deserialize(encoded_admin_menu_references)
+    post: DecodedPost = await tools.deserializer.deserialize(encoded_post)
+
+    if callback_components.action == "complete":
+        if bool(post.post.message.text) or \
+                bool(post.post.message.album):
+            await call.message.delete()
+            ...
+            await state.set_state(None)
+
+        else:
+            await call.answer("❌ Ошибка!\nВаше сообщение пустое!")
+
+    elif callback_components.action == "pin_modify":
+        ...
+
+    elif callback_components.action == "attach_media":
+        await call.message.edit_text(
+            text=texts.get("attach_media_text"),
+            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="complete_keyboard"))
+        )
+        await state.set_state(StateGroup.write_attach_media)
+
+    elif callback_components.action == "delete_all_media":
+        post.post.message.album = []
+        post.post.message.document = None
+        await call.answer(show_alert=True, text="Все медиа файлы успешно удалены!")
+        await call.message.edit_reply_markup(
+            reply_markup=PostModifyKeyboard(
+                 has_media=False
+            ).get_keyboard(admin_menu_references.TO_POST_INFO)
+        )
+
+    encoded_admin_menu_references: str = await tools.serializer.serialize(admin_menu_references)
+    encoded_post: str = await tools.serializer.serialize(post)
+
+    state_data["admin_menu_references"] = encoded_admin_menu_references
+    state_data["current_post"] = encoded_post
+    await state.set_data(state_data)
+
+
+@message_input_router.message(StateFilter(StateGroup.write_attach_media))
+async def handle_attach_media(message: Message, state: FSMContext, album: List[AlbumMedia] = None):
+    state_data: Dict = await state.get_data()
+    encoded_post: str = state_data["current_post"]
+    post: DecodedPost = await tools.deserializer.deserialize(encoded_post)
+
+    str_validator: StringValidator = StringValidator()
+
+    text: str = await get_message_text(message, album)
+    got_message: bool = False
+
+    is_valid = str_validator.validate(text)
+
+    if is_valid:
+        if album:
+            post.post.message.album += album
+            got_message = True
+
+        else:
+            if message.content_type != AllowedContentTypes.video.value \
+                    and message.content_type != AllowedContentTypes.photo.value:
+
+                await message.answer("❌ Ошибка! \nФайл должен быть либо фото, либо видео")
+                await message.delete()
+
+            else:
+                if message.photo:
+                    post.post.message.album.append(
+                        AlbumMedia(photo=message.photo[-1].file_id, caption=message.caption)
+                    )
+
+                elif message.video:
+                    post.post.message.album.append(
+                        AlbumMedia(video=message.video.file_id, caption=message.caption)
+                    )
+
+                got_message = True
+
+        if post.post.message.text is not None:
+            post.post.message.album[0].caption = post.post.message.text
+
+    else:
+        await message.answer("❌ Ошибка!\nФайл должен быть отправлен без текста!")
+        await message.delete()
+
+    if got_message:
+        await message.answer(
+            text="Принято!✅\nВы можете продолжить, либо вернуться ",
+            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="complete_keyboard"))
+        )
+
+    encoded_post: str = await tools.serializer.serialize(post)
+    state_data["current_post"] = encoded_post
+    await state.set_data(state_data)
+
+
+@admin_router.callback_query(
+    AdminCallback.filter(F.menu_level == PinTimeSelectionBuilder.get_menu_level()),
+)
+async def handle_pin_time_selection(call: CallbackQuery, state: FSMContext):
+    callback_components: AdminCallback = AdminCallback.unpack(call.data)
+    state_data: Dict = await state.get_data()
+
+    encoded_post: str = state_data["current_post"]
+    encoded_admin_menu_references: str = state_data["admin_menu_references"]
+
+    admin_menu_references: AdminMenuReferences = await tools.deserializer.deserialize(encoded_admin_menu_references)
+    post: DecodedPost = await tools.deserializer.deserialize(encoded_post)
+
+    if callback_components.action == "write_days_count":
+        await call.message.edit_text(
+            text=texts.get("enter_number_of_pin_days"),
+            reply_markup=InlineBuilder().get_back_button_keyboard(
+                back_callback=menu_references.TO_PIN_TIME_SELECTION
+            )
+        )
+        await state.set_state(StateGroup.write_pin_days_count)
+
+    elif callback_components.action.isnumeric():
+        pin_days: Final[int] = int(callback_components.action)
+        post.post.pin_days = pin_days
+        if pin_days == 0:
+            await call.answer(f"Вы выбрали размещение без закрепления ✅")
+
+        else:
+            await call.answer(f"Вы выбрали закреп на {pin_days} дня / дней ✅")
+
+
+        await call.message.delete()
+
+        await call.message.answer()
+
+    encoded_admin_menu_references: str = await tools.serializer.serialize(admin_menu_references)
+    encoded_post: str = await tools.serializer.serialize(post)
+
+    state_data["admin_menu_references"] = encoded_admin_menu_references
+    state_data["current_post"] = encoded_post
+    await state.set_data(state_data)
+
+
+@admin_router.message(
+    StateFilter(StateGroup.write_pin_days_count)
+)
+async def handle_write_pin_days_count(message: Message, state: FSMContext):
+    state_data: Dict = await state.get_data()
+
+    encoded_place_advertisement_form: str = state_data["place_advertisement_form"]
+    current_menu_message_id: int = state_data["current_menu_message_id"]
+    encoded_menu_references: str = state_data["menu_references"]
+    encoded_placement_type_selection: str = state_data["placement_type_selection"]
+
+    menu_references: MenuReferences = await tools.deserializer.deserialize(encoded_menu_references)
+    placement_type_selection: PlacementTypeSelection = await tools.deserializer.deserialize(
+        encoded_placement_type_selection
+    )
+    place_advertisement_form: PlaceAdvertisementForm = await tools.deserializer.deserialize(
+        encoded_place_advertisement_form
+    )
+
+    int_validator: IntegerValidator = IntegerValidator(
+        max_possible_value=meta.MAX_PIN_DAYS_POSSIBLE
+    )
+
+    is_valid, value = int_validator.validate(message.text)
+
+    if is_valid:
+        place_advertisement_form.pin_days = value
+
+        await bot.delete_message(
+            chat_id=message.from_user.id,
+            message_id=current_menu_message_id
+        )
+
+
+    else:
+        await message.answer("❌Количество дней не должно быть больше 31!")
+        await message.delete()
+
+    await message.delete()
+    await state.set_state(StateGroup.place_advertisement)
+    encoded_place_advertisement_form: str = await tools.serializer.serialize(place_advertisement_form)
+    encoded_placement_type_selection: str = await tools.serializer.serialize(placement_type_selection)
+
+    state_data["current_menu_message_id"] = current_menu_message_id
+    state_data["placement_type_selection"] = encoded_placement_type_selection
+    state_data["place_advertisement_form"] = encoded_place_advertisement_form
     await state.set_data(state_data)

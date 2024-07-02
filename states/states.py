@@ -16,3 +16,5 @@ class StateGroup(StatesGroup):
     write_payment_check: State = State()
     write_datetime_web_data_payment_stage: State = State()
 
+    in_post_settings: State = State()
+    in_post_modify: State = State()

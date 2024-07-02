@@ -42,7 +42,7 @@ class PriceCounter:
                 return price_meta.ALL_CHATS
 
             else:
-                return price_meta.ONE_CHAT * len(self.__form.chats)
+                return price_meta.ONE_CHAT * len(self.__form.chats.chats)
 
         elif isinstance(self.__form.chats, ChatGroup):
             return self.__form.chats.cost_of_placement
@@ -53,7 +53,7 @@ class PriceCounter:
                 return price_meta.ONE_DAY_PIN_FOR_ALL_CHATS * self.__form.pin_days
 
             else:
-                return price_meta.ONE_DAY_PIN_FOR_ONE_CHAT * len(self.__form.chats)
+                return price_meta.ONE_DAY_PIN_FOR_ONE_CHAT * self.__form.pin_days
 
         elif isinstance(self.__form.chats, ChatGroup):
             return self.__form.chats.cost_of_one_day_pin * self.__form.pin_days
