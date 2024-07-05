@@ -65,6 +65,7 @@ class AdminMenuReferences:
     TO_CALENDAR_MENU: str = ""
     TO_POST_SELECTION: str = ""
     TO_POST_INFO: str = ""
+    TO_PIN_TIME_SELECTION: str = ""
 
 
 @dataclass

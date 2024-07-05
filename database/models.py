@@ -58,7 +58,7 @@ class Post(Base):
     status: Mapped[Enum] = mapped_column(Enum(PostStatus), nullable=False, default=PostStatus.deferred)
     publish_date: Mapped[Date] = mapped_column(Date, nullable=False)
     post: Mapped[str] = mapped_column(nullable=False)
-    chats: Mapped[ARRAY] = mapped_column(ARRAY(String), nullable=False)
+    chats: Mapped[ARRAY] = mapped_column(ARRAY(BigInteger), nullable=False)
     message_ids: Mapped[ARRAY] = mapped_column(ARRAY(BigInteger), nullable=True)
 
 

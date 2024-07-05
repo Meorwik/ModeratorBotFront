@@ -134,7 +134,7 @@ class AdvertisementSender:
 
         if place_advertisement_form.pin_days > 0:
             for chat_id in place_advertisement_form.chats.chats:
-                chat_id: int = int("-100" + chat_id)
+                chat_id: int = int("-100" + str(chat_id))
                 sent_message: Message = await send(chat_id, place_advertisement_form.message)
 
                 if isinstance(sent_message, list):
@@ -165,7 +165,7 @@ class AdvertisementSender:
 
         else:
             for chat_id in place_advertisement_form.chats.chats:
-                chat_id: int = int("-100" + chat_id)
+                chat_id: int = int("-100" + str(chat_id))
                 sent_message: Message = await send(chat_id, place_advertisement_form.message)
                 messages_ids.append(sent_message.message_id)
 

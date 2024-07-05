@@ -1,5 +1,6 @@
 from .callbacks import ActionCallback, AdminCallback, BackCallback, DataPassCallback
 from .base import FacadeKeyboard, DefaultPageableKeyboard, InlineBuilder
+from .keyboards import PinTimeSelectionBuilder
 from aiogram.types import InlineKeyboardButton
 from datetime import datetime, timedelta
 from typing import Final, List, Dict
@@ -251,33 +252,32 @@ class PostModifyKeyboard(FacadeKeyboard):
         is_document: bool = data[1]
 
         facade: Dict = {
-            "Настройки закрепления": AdminCallback(menu_level=self._LEVEL, action="pin_modify").pack()
+            "📌⚙️ Настройки закрепления": AdminCallback(menu_level=self._LEVEL, action="pin_modify").pack()
         }
 
         if not is_document:
             facade["📎 Прикрепить медиа"] = AdminCallback(menu_level=self._LEVEL, action="attach_media").pack()
 
         if has_media:
-            facade["Удалить все медиа"] = AdminCallback(menu_level=self._LEVEL, action="delete_all_media").pack()
+            facade["🗑🖼 Удалить все медиа"] = AdminCallback(menu_level=self._LEVEL, action="delete_all_media").pack()
 
         facade["✅ Продолжить"] = AdminCallback(menu_level=self._LEVEL, action="complete").pack()
 
         return facade
 
 
-class PinTimeSelectionBuilder(FacadeKeyboard):
+class AdminPinTimeSelectionBuilder(PinTimeSelectionBuilder):
 
     _LEVEL = "PinTimeSelectionBuilder"
-    _ADJUST_SIZES = [1]
 
     _FACADE: Dict = {
-        "Без закрепления": ActionCallback(menu_level=_LEVEL, action="0").pack(),
-        "Закреп на 1 сутки": ActionCallback(menu_level=_LEVEL, action="1").pack(),
-        "Закреп на 2 суток": ActionCallback(menu_level=_LEVEL, action="2").pack(),
-        "Закреп на 5 суток": ActionCallback(menu_level=_LEVEL, action="5").pack(),
-        "Указать количество дней": ActionCallback(menu_level=_LEVEL, action="write_days_count").pack(),
+        "Без закрепления": AdminCallback(menu_level=_LEVEL, action="0").pack(),
+        "Закреп на 1 сутки": AdminCallback(menu_level=_LEVEL, action="1").pack(),
+        "Закреп на 2 суток": AdminCallback(menu_level=_LEVEL, action="2").pack(),
+        "Закреп на 5 суток": AdminCallback(menu_level=_LEVEL, action="5").pack(),
+        "Указать количество дней": AdminCallback(menu_level=_LEVEL, action="write_days_count").pack(),
     }
 
     def __init__(self):
-        super().__init__(level=self._LEVEL)
+        super().__init__()
 

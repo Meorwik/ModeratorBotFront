@@ -1,27 +1,27 @@
 from keyboards.inline.admin_keyboards import AdminMainMenuKeyboard, AdminModerationKeyboard, DeclinedPostKeyboard, \
     InlineBuilder, ContinueModerationKeyboard, StatisticsKeyboard, AcceptPaymentKeyboard, CalendarKeyboard, \
     PostSelectionKeyboard, PostInteractionKeyboard, PostCancellationConfirmKeyboard, PostModifyKeyboard, \
-    PinTimeSelectionBuilder
+    AdminPinTimeSelectionBuilder
 from keyboards.inline.keyboards import SelectPaymentMethodKeyboard, PaymentCheckResultKeyboard
 from keyboards.inline.callbacks import AdminCallback, BackCallback, DataPassCallback
 from forms.forms import ModeratedAdvertisementForm, PlaceAdvertisementForm, ElectiveChatGroup, DecodedPost
 from database.models import ModerationRequest, ModerationStatus, Chat, IncomeRecord, Post
+from handlers.users.place_advertisement_handler import get_message_text
+from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 from middlewares.album_middleware import AlbumMiddleware, AlbumMedia
 from utils.advertisement_sender import AdvertisementSender
 from utils.validators.media_validator import MediaValidator
 from utils.validators.str_validator import StringValidator
 from utils.validators.int_validator import IntegerValidator
 from forms.enums import PlacementTypes, AllowedContentTypes
-from handlers.users.place_advertisement_handler import get_message_text
-from data.config import tools, AdminMenuReferences
+from data.config import tools, AdminMenuReferences, meta
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import CallbackQuery, Message
+from typing import Final, Dict, List, Union
 from loader import bot, postgres, scheduler
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 from data.texts import texts, templates
 from database.enums import PostStatus
-from typing import Final, Dict, List
 from states.states import StateGroup
 from datetime import datetime
 from aiogram import F, Router
@@ -592,6 +592,8 @@ async def handle_write_message_to_place(message: Message, state: FSMContext, alb
                     что ваше сообщение соответствует требованиям выше.
                     """
                 )
+        else:
+            post.post.message.text = text
 
         has_media: bool = len(post.post.message.album) != 0
 
@@ -647,15 +649,25 @@ async def handle_post_modify(call: CallbackQuery, state: FSMContext):
     if callback_components.action == "complete":
         if bool(post.post.message.text) or \
                 bool(post.post.message.album):
-            await call.message.delete()
-            ...
-            await state.set_state(None)
+
+            encoded_post_material: str = await tools.serializer.serialize(post.post)
+            await postgres.change_post_materials(post.id, encoded_post_material)
+
+            await call.answer(text="Изменения прошли успешно! ", show_alert=True)
+            await call.message.edit_text(
+                text="Изменения прошли успешно!✅",
+                reply_markup=InlineBuilder().get_back_button_keyboard(admin_menu_references.TO_POST_SELECTION)
+            )
 
         else:
             await call.answer("❌ Ошибка!\nВаше сообщение пустое!")
 
     elif callback_components.action == "pin_modify":
-        ...
+        admin_menu_references.TO_PIN_TIME_SELECTION = call.data
+        await call.message.edit_text(
+            text=texts.get("select_pin_time"),
+            reply_markup=AdminPinTimeSelectionBuilder().get_keyboard(BackCallback(go_to="complete_keyboard"))
+        )
 
     elif callback_components.action == "attach_media":
         await call.message.edit_text(
@@ -667,6 +679,7 @@ async def handle_post_modify(call: CallbackQuery, state: FSMContext):
     elif callback_components.action == "delete_all_media":
         post.post.message.album = []
         post.post.message.document = None
+        post.post.message.is_document = None
         await call.answer(show_alert=True, text="Все медиа файлы успешно удалены!")
         await call.message.edit_reply_markup(
             reply_markup=PostModifyKeyboard(
@@ -680,6 +693,46 @@ async def handle_post_modify(call: CallbackQuery, state: FSMContext):
     state_data["admin_menu_references"] = encoded_admin_menu_references
     state_data["current_post"] = encoded_post
     await state.set_data(state_data)
+
+
+@admin_router.callback_query(
+    BackCallback.filter(F.go_to == "complete_keyboard"),
+)
+async def handle_back_from_attach_media(msg: Union[CallbackQuery, Message], state: FSMContext):
+    state_data: Dict = await state.get_data()
+    encoded_post: str = state_data["current_post"]
+    encoded_admin_menu_references: str = state_data["admin_menu_references"]
+
+    admin_menu_references: AdminMenuReferences = await tools.deserializer.deserialize(encoded_admin_menu_references)
+    post: DecodedPost = await tools.deserializer.deserialize(encoded_post)
+
+    has_media: bool = len(post.post.message.album) != 0
+
+    final_keyboard: PostModifyKeyboard = \
+        PostModifyKeyboard(
+            has_media=has_media,
+            is_document=post.post.message.is_document
+        )
+
+    if isinstance(msg, CallbackQuery):
+        await msg.message.edit_text(
+            text=texts.get("check_post_details").format(text=post.post.message.text),
+            reply_markup=final_keyboard.get_keyboard(admin_menu_references.TO_POST_INFO)
+        )
+
+    else:
+        await msg.delete()
+        message_to_delete = await msg.answer(
+            text="Загрузка...",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        await message_to_delete.delete()
+        await msg.answer(
+            text=texts.get("check_post_details").format(text=post.post.message.text),
+            reply_markup=final_keyboard.get_keyboard(admin_menu_references.TO_POST_INFO)
+        )
+
+    await state.set_state(StateGroup.place_advertisement)
 
 
 @message_input_router.message(StateFilter(StateGroup.write_attach_media))
@@ -739,7 +792,7 @@ async def handle_attach_media(message: Message, state: FSMContext, album: List[A
 
 
 @admin_router.callback_query(
-    AdminCallback.filter(F.menu_level == PinTimeSelectionBuilder.get_menu_level()),
+    AdminCallback.filter(F.menu_level == AdminPinTimeSelectionBuilder.get_menu_level()),
 )
 async def handle_pin_time_selection(call: CallbackQuery, state: FSMContext):
     callback_components: AdminCallback = AdminCallback.unpack(call.data)
@@ -755,7 +808,7 @@ async def handle_pin_time_selection(call: CallbackQuery, state: FSMContext):
         await call.message.edit_text(
             text=texts.get("enter_number_of_pin_days"),
             reply_markup=InlineBuilder().get_back_button_keyboard(
-                back_callback=menu_references.TO_PIN_TIME_SELECTION
+                back_callback=admin_menu_references.TO_PIN_TIME_SELECTION
             )
         )
         await state.set_state(StateGroup.write_pin_days_count)
@@ -764,15 +817,17 @@ async def handle_pin_time_selection(call: CallbackQuery, state: FSMContext):
         pin_days: Final[int] = int(callback_components.action)
         post.post.pin_days = pin_days
         if pin_days == 0:
-            await call.answer(f"Вы выбрали размещение без закрепления ✅")
+            text: str = "Вы выбрали размещение без закрепления ✅"
 
         else:
-            await call.answer(f"Вы выбрали закреп на {pin_days} дня / дней ✅")
+            text: str = f"Вы выбрали закреп на {pin_days} дня / дней ✅"
 
+        await call.answer(text=text)
 
-        await call.message.delete()
-
-        await call.message.answer()
+        await call.message.edit_text(
+            text=text,
+            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="complete_keyboard"))
+        )
 
     encoded_admin_menu_references: str = await tools.serializer.serialize(admin_menu_references)
     encoded_post: str = await tools.serializer.serialize(post)
@@ -788,18 +843,8 @@ async def handle_pin_time_selection(call: CallbackQuery, state: FSMContext):
 async def handle_write_pin_days_count(message: Message, state: FSMContext):
     state_data: Dict = await state.get_data()
 
-    encoded_place_advertisement_form: str = state_data["place_advertisement_form"]
-    current_menu_message_id: int = state_data["current_menu_message_id"]
-    encoded_menu_references: str = state_data["menu_references"]
-    encoded_placement_type_selection: str = state_data["placement_type_selection"]
-
-    menu_references: MenuReferences = await tools.deserializer.deserialize(encoded_menu_references)
-    placement_type_selection: PlacementTypeSelection = await tools.deserializer.deserialize(
-        encoded_placement_type_selection
-    )
-    place_advertisement_form: PlaceAdvertisementForm = await tools.deserializer.deserialize(
-        encoded_place_advertisement_form
-    )
+    encoded_post: str = state_data["current_post"]
+    post: DecodedPost = await tools.deserializer.deserialize(encoded_post)
 
     int_validator: IntegerValidator = IntegerValidator(
         max_possible_value=meta.MAX_PIN_DAYS_POSSIBLE
@@ -808,24 +853,22 @@ async def handle_write_pin_days_count(message: Message, state: FSMContext):
     is_valid, value = int_validator.validate(message.text)
 
     if is_valid:
-        place_advertisement_form.pin_days = value
-
-        await bot.delete_message(
-            chat_id=message.from_user.id,
-            message_id=current_menu_message_id
+        post.post.pin_days = value
+        await message.answer(
+            text=f"Вы выбрали закреп на {value} дня / дней ✅",
+            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="complete_keyboard"))
         )
-
 
     else:
         await message.answer("❌Количество дней не должно быть больше 31!")
         await message.delete()
 
     await message.delete()
-    await state.set_state(StateGroup.place_advertisement)
-    encoded_place_advertisement_form: str = await tools.serializer.serialize(place_advertisement_form)
-    encoded_placement_type_selection: str = await tools.serializer.serialize(placement_type_selection)
+    await state.set_state(StateGroup.in_post_settings)
 
-    state_data["current_menu_message_id"] = current_menu_message_id
-    state_data["placement_type_selection"] = encoded_placement_type_selection
-    state_data["place_advertisement_form"] = encoded_place_advertisement_form
+    encoded_post: str = await tools.serializer.serialize(post)
+    state_data["current_post"] = encoded_post
     await state.set_data(state_data)
+
+
+

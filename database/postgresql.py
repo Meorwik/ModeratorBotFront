@@ -166,6 +166,14 @@ class PostgresManager(DatabaseManager):
             await session.execute(query)
             await session.commit()
 
+    async def change_post_materials(self, post_id: int, post: str):
+        async with self.Session() as session:
+            query = update(Post).where(
+                Post.id == post_id
+            ).values(post=post)
+            await session.execute(query)
+            await session.commit()
+
     async def add_messages_ids(self, post_id: int, message_ids: List[int]):
         async with self.Session() as session:
             query = update(Post).where(
