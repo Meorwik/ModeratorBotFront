@@ -39,7 +39,7 @@ async def schedule_post_publication(moderated_advertisement_form):
     post: Post = Post(
         publish_date=publish_date,
         post=encoded_advertisement_form,
-        chats=moderated_advertisement_form.advertisement_form.chats.chats,
+        chats=[int(chat_id) for chat_id in moderated_advertisement_form.advertisement_form.chats.chats],
     )
     post: Post = await postgres.add_post(post)
 
