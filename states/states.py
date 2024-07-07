@@ -18,3 +18,5 @@ class StateGroup(StatesGroup):
 
     in_post_settings: State = State()
     in_post_modify: State = State()
+    admin_write_attach_media: State = State()
+

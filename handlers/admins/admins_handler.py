@@ -674,7 +674,7 @@ async def handle_post_modify(call: CallbackQuery, state: FSMContext):
             text=texts.get("attach_media_text"),
             reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="complete_keyboard"))
         )
-        await state.set_state(StateGroup.write_attach_media)
+        await state.set_state(StateGroup.admin_write_attach_media)
 
     elif callback_components.action == "delete_all_media":
         post.post.message.album = []
@@ -735,7 +735,7 @@ async def handle_back_from_attach_media(msg: Union[CallbackQuery, Message], stat
     await state.set_state(StateGroup.place_advertisement)
 
 
-@message_input_router.message(StateFilter(StateGroup.write_attach_media))
+@message_input_router.message(StateFilter(StateGroup.admin_write_attach_media))
 async def handle_attach_media(message: Message, state: FSMContext, album: List[AlbumMedia] = None):
     state_data: Dict = await state.get_data()
     encoded_post: str = state_data["current_post"]
