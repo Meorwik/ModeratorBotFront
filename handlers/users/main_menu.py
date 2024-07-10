@@ -1,4 +1,4 @@
-from keyboards.inline.keyboards import MainMenuBuilder, InlineBuilder, ChatSelectionBuilder
+from keyboards.inline.keyboards import MainMenuBuilder, InlineBuilder, ChatGroupSelectionBuilder
 from keyboards.inline.callbacks import ActionCallback, BackCallback
 from aiogram.types import InlineKeyboardMarkup
 from forms.forms import PlaceAdvertisementForm
@@ -30,7 +30,7 @@ async def handle_main_menu(call: CallbackQuery, state: FSMContext):
 
     if callback_components.action == "place_advertisement":
         chat_groups: List[ChatGroup] = await postgres.get_chat_groups()
-        chat_selection_keyboard: ChatSelectionBuilder = ChatSelectionBuilder(chat_groups)
+        chat_selection_keyboard: ChatGroupSelectionBuilder = ChatGroupSelectionBuilder(chat_groups)
         await call.message.edit_text(
             text=texts.get("place_advertisement"),
             reply_markup=chat_selection_keyboard.get_keyboard()

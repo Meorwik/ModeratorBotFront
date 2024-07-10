@@ -1,4 +1,4 @@
-from keyboards.inline.keyboards import ChatSelectionBuilder, \
+from keyboards.inline.keyboards import ChatGroupSelectionBuilder, \
     VariousChatSelectionBuilder, PinTimeSelectionBuilder, \
     InlineBuilder, PlacementTypeSelection, CompletePlaceAdvertisementFormMenu
 from forms.enums import PlacementTypesMediaPaths, PlacementTypes, PlacementTypesDescription, \
@@ -74,7 +74,7 @@ async def get_message_text(message: Message, album: List[AlbumMedia] = None):
 
 
 @place_advertisement_menu_router.callback_query(
-    ActionCallback.filter(F.menu_level == ChatSelectionBuilder.get_menu_level()),
+    ActionCallback.filter(F.menu_level == ChatGroupSelectionBuilder.get_menu_level()),
 )
 async def handle_chat_selection(call: CallbackQuery, state: FSMContext):
     async def open_pin_time_selection_menu_from_chat_selection():

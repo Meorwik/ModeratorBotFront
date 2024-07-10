@@ -41,10 +41,10 @@ class MainMenuBuilder(InlineBuilder):
         self.add(*menu_buttons)
 
 
-class ChatSelectionBuilder(InlineBuilder):
+class ChatGroupSelectionBuilder(InlineBuilder):
     __name__ = "ChatSelectionBuilder"
 
-    _ADJUST_SIZES: List[int] = [2, 2, 2, 2, 2, 1]
+    _ADJUST_SIZES: List[int] = [1]
     _LEVEL = "ChatSelection"
 
     def __init__(self, chat_groups: List[ChatGroup]):
@@ -61,7 +61,6 @@ class ChatSelectionBuilder(InlineBuilder):
                     action=f"{chat.id}").pack()
                 )
             )
-            chat_selection_buttons.append(InlineKeyboardButton(text="Просмотр чата", url="https://www.google.com"))
 
         select_various_chats: InlineKeyboardButton = InlineKeyboardButton(
             text="Выбрать несколько чатов",
