@@ -666,13 +666,13 @@ async def handle_post_modify(call: CallbackQuery, state: FSMContext):
         admin_menu_references.TO_PIN_TIME_SELECTION = call.data
         await call.message.edit_text(
             text=texts.get("select_pin_time"),
-            reply_markup=AdminPinTimeSelectionBuilder().get_keyboard(BackCallback(go_to="complete_keyboard"))
+            reply_markup=AdminPinTimeSelectionBuilder().get_keyboard(BackCallback(go_to="admin_complete_keyboard"))
         )
 
     elif callback_components.action == "attach_media":
         await call.message.edit_text(
             text=texts.get("attach_media_text"),
-            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="complete_keyboard"))
+            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="admin_complete_keyboard"))
         )
         await state.set_state(StateGroup.admin_write_attach_media)
 
@@ -696,7 +696,7 @@ async def handle_post_modify(call: CallbackQuery, state: FSMContext):
 
 
 @admin_router.callback_query(
-    BackCallback.filter(F.go_to == "complete_keyboard"),
+    BackCallback.filter(F.go_to == "admin_complete_keyboard"),
 )
 async def handle_back_from_attach_media(msg: Union[CallbackQuery, Message], state: FSMContext):
     state_data: Dict = await state.get_data()
@@ -783,7 +783,7 @@ async def handle_attach_media(message: Message, state: FSMContext, album: List[A
     if got_message:
         await message.answer(
             text="Принято!✅\nВы можете продолжить, либо вернуться ",
-            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="complete_keyboard"))
+            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="admin_complete_keyboard"))
         )
 
     encoded_post: str = await tools.serializer.serialize(post)
@@ -826,7 +826,7 @@ async def handle_pin_time_selection(call: CallbackQuery, state: FSMContext):
 
         await call.message.edit_text(
             text=text,
-            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="complete_keyboard"))
+            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="admin_complete_keyboard"))
         )
 
     encoded_admin_menu_references: str = await tools.serializer.serialize(admin_menu_references)
@@ -856,7 +856,7 @@ async def handle_write_pin_days_count(message: Message, state: FSMContext):
         post.post.pin_days = value
         await message.answer(
             text=f"Вы выбрали закреп на {value} дня / дней ✅",
-            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="complete_keyboard"))
+            reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="admin_complete_keyboard"))
         )
 
     else:
