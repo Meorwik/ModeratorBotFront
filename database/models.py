@@ -31,7 +31,6 @@ class ChatGroup(Base):
     id: Mapped[Integer] = mapped_column(Integer, primary_key=True, nullable=False, unique=True)
     name: Mapped[str] = mapped_column(nullable=False)
     chats: Mapped[ARRAY] = mapped_column(ARRAY(item_type=BigInteger), nullable=False)
-    link: Mapped[String] = mapped_column(String, nullable=False)
     cost_of_placement: Mapped[int] = mapped_column(nullable=False)
     cost_of_one_day_pin: Mapped[int] = mapped_column(nullable=False)
 
@@ -44,7 +43,6 @@ class Chat(Base):
 
     chat_id: Mapped[BigInteger] = mapped_column(BigInteger, nullable=False, primary_key=True)
     chat_name: Mapped[str] = mapped_column(nullable=False)
-    link: Mapped[str] = mapped_column(nullable=False)
 
     def __repr__(self):
         return f"Chat - {self.chat_id} ChatName - {self.chat_name}"
