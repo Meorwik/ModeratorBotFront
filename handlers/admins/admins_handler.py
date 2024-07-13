@@ -5,9 +5,9 @@ from keyboards.inline.admin_keyboards import AdminMainMenuKeyboard, AdminModerat
 from keyboards.inline.keyboards import SelectPaymentMethodKeyboard, PaymentCheckResultKeyboard
 from keyboards.inline.callbacks import AdminCallback, BackCallback, DataPassCallback
 from forms.forms import ModeratedAdvertisementForm, PlaceAdvertisementForm, ElectiveChatGroup, DecodedPost
+from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove, InputMediaVideo, InputMediaPhoto
 from database.models import ModerationRequest, ModerationStatus, Chat, IncomeRecord, Post
 from handlers.users.place_advertisement_handler import get_message_text
-from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 from middlewares.album_middleware import AlbumMiddleware, AlbumMedia
 from utils.advertisement_sender import AdvertisementSender
 from utils.validators.media_validator import MediaValidator
@@ -611,7 +611,9 @@ async def handle_write_message_to_place(message: Message, state: FSMContext, alb
 
         else:
             post.post.message.message_id = message.message_id
-            post.post.message.text = message.text
+            post.post.message.text = message.text if message.text else message.caption
+            if post.post.message.text is None:
+                post.post.message.text = ''
         has_media: bool = False
 
     encoded_post: str = await tools.serializer.serialize(post)
@@ -625,8 +627,31 @@ async def handle_write_message_to_place(message: Message, state: FSMContext, alb
         )
 
     if got_message:
+        if post.post.message.album:
+            post.post.message.album[0].caption = post.post.message.text
+            media = [
+                InputMediaVideo(media=media.video, caption=media.caption)
+                if media.video else
+                InputMediaPhoto(media=media.photo, caption=media.caption)
+                for media in post.post.message.album
+            ]
+            await message.answer_media_group(
+                media=media,
+            )
+
+        elif post.post.message.is_document:
+            await message.answer_document(
+                document=post.post.message.document,
+                caption=post.post.message.text
+            )
+
+        else:
+            await message.answer(
+                text=post.post.message.text
+            )
+
         await message.answer(
-            text=texts.get("check_post_details").format(text=post.post.message.text),
+            text=texts.get("check_post_details").format(text=""),
             reply_markup=final_keyboard.get_keyboard(admin_menu_references.TO_POST_INFO)
         )
 
@@ -781,6 +806,14 @@ async def handle_attach_media(message: Message, state: FSMContext, album: List[A
         await message.delete()
 
     if got_message:
+        if album:
+            for i in range(len(album)+1):
+                await bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id-i)
+
+        else:
+            await bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id - 1)
+
+        await message.delete()
         await message.answer(
             text="Принято!✅\nВы можете продолжить, либо вернуться ",
             reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="admin_complete_keyboard"))
@@ -811,7 +844,7 @@ async def handle_pin_time_selection(call: CallbackQuery, state: FSMContext):
                 back_callback=admin_menu_references.TO_PIN_TIME_SELECTION
             )
         )
-        await state.set_state(StateGroup.write_pin_days_count)
+        await state.set_state(StateGroup.admin_write_pin_days_count)
 
     elif callback_components.action.isnumeric():
         pin_days: Final[int] = int(callback_components.action)
@@ -838,7 +871,7 @@ async def handle_pin_time_selection(call: CallbackQuery, state: FSMContext):
 
 
 @admin_router.message(
-    StateFilter(StateGroup.write_pin_days_count)
+    StateFilter(StateGroup.admin_write_pin_days_count)
 )
 async def handle_write_pin_days_count(message: Message, state: FSMContext):
     state_data: Dict = await state.get_data()

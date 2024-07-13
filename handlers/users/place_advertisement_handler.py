@@ -508,7 +508,9 @@ async def handle_write_message_to_place(message: Message, state: FSMContext, alb
 
         else:
             place_advertisement_form.message.message_id = message.message_id
-            place_advertisement_form.message.text = message.text
+            place_advertisement_form.message.text = message.text if message.text else message.caption
+            if place_advertisement_form.message.text is None:
+                place_advertisement_form.message.text = ''
         has_media: bool = False
 
     encoded_place_advertisement_form: str = await tools.serializer.serialize(place_advertisement_form)
@@ -523,8 +525,31 @@ async def handle_write_message_to_place(message: Message, state: FSMContext, alb
         )
 
     if got_message:
+        if place_advertisement_form.message.album:
+            place_advertisement_form.message.album[0].caption = place_advertisement_form.message.text
+            media = [
+                InputMediaVideo(media=media.video, caption=media.caption)
+                if media.video else
+                InputMediaPhoto(media=media.photo, caption=media.caption)
+                for media in place_advertisement_form.message.album
+            ]
+            await message.answer_media_group(
+                media=media,
+            )
+
+        elif place_advertisement_form.message.is_document:
+            await message.answer_document(
+                document=place_advertisement_form.message.document,
+                caption=place_advertisement_form.message.text
+            )
+
+        else:
+            await message.answer(
+                text=place_advertisement_form.message.text
+            )
+
         await message.answer(
-            text=texts.get("check_post_details").format(text=place_advertisement_form.message.text),
+            text=texts.get("check_post_details").format(text=""),
             reply_markup=final_keyboard.get_keyboard(menu_references.TO_WRITE_MESSAGE)
         )
 
@@ -630,6 +655,14 @@ async def handle_attach_media(message: Message, state: FSMContext, album: List[A
         await message.delete()
 
     if got_message:
+        if album:
+            for i in range(len(album)+1):
+                await bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id-i)
+
+        else:
+            await bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id - 1)
+
+        await message.delete()
         await message.answer(
             text="Принято!✅\nВы можете продолжить, либо вернуться ",
             reply_markup=InlineBuilder().get_back_button_keyboard(BackCallback(go_to="complete_keyboard"))
