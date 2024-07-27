@@ -2,6 +2,7 @@ from keyboards.inline.keyboards import SelectPaymentMethodKeyboard, PaymentProvi
     InlineBuilder, PaymentCheckResultKeyboard
 from keyboards.inline.callbacks import ActionCallback, DataPassCallback
 from keyboards.inline.admin_keyboards import AcceptPaymentKeyboard
+from data.config import meta, config
 from utils.advertisement_sender import AdvertisementSender
 from keyboards.default.keyboards import WebAppKeyboard
 from database.models import ModerationRequest, Post
@@ -15,7 +16,6 @@ from loader import postgres, bot, scheduler
 from aiogram.fsm.context import FSMContext
 from data.texts import templates, texts
 from aiogram.filters import StateFilter
-from data.config import meta, config
 from states.states import StateGroup
 from typing import Final, Dict
 from datetime import datetime
@@ -87,7 +87,9 @@ async def handle_payment_method_selection(call: CallbackQuery, state: FSMContext
     if callback_components.action == "entity":
         await call.message.edit_text(
             text=payment_check,
-            reply_markup=PaymentProviderKeyboard(is_entity=True).get_keyboard()
+            reply_markup=PaymentProviderKeyboard(
+                is_entity=True, advertisement_form=str(moderated_advertisement_form.request_id)
+            ).get_keyboard()
         )
         encoded_moderated_advertisement_form: str = await tools.serializer.serialize(moderated_advertisement_form)
         state_data["moderated_advertisement_form"] = encoded_moderated_advertisement_form
@@ -95,7 +97,9 @@ async def handle_payment_method_selection(call: CallbackQuery, state: FSMContext
     elif callback_components.action == "individual":
         await call.message.edit_text(
             text=payment_check,
-            reply_markup=PaymentProviderKeyboard(is_entity=False).get_keyboard()
+            reply_markup=PaymentProviderKeyboard(
+                is_entity=False, advertisement_form=str(moderated_advertisement_form.request_id)
+            ).get_keyboard()
         )
 
         encoded_moderated_advertisement_form: str = await tools.serializer.serialize(moderated_advertisement_form)

@@ -345,17 +345,28 @@ class PaymentProviderKeyboard(FacadeKeyboard):
     _ADJUST_SIZES = [1]
     _LEVEL = "@PaymentProviderKeyboard"
 
-    def __init__(self, is_entity: bool):
-        super().__init__(level=self._LEVEL, data=is_entity)
+    def __init__(self, is_entity: bool, advertisement_form):
+        super().__init__(level=self._LEVEL, data=(is_entity, advertisement_form))
 
     def _init_facade(self, data=None, **kwargs) -> Dict:
-        is_entity: bool = data
+        is_entity: bool = data[0]
+        advertisement_form = data[1]
         facade: Dict = {}
 
         if is_entity:
-            facade: Dict = {
-                "Запросить счет": "https://www.youtube.com/",
-            }
+            facade["Запросить счет"] = "https://www.youtube.com/"
+            facade["Оплатить как физ лицо"] = DataPassCallback(
+                menu_level="@SelectPaymentMethodKeyboard",
+                action="individual",
+                data=advertisement_form
+            ).pack()
+
+        else:
+            facade["Оплатить как юр лицо"] = DataPassCallback(
+                menu_level="@SelectPaymentMethodKeyboard",
+                action="entity",
+                data=advertisement_form
+            ).pack()
 
         facade["Оплатил"] = ActionCallback(menu_level=self.level, action="paid").pack()
         return facade

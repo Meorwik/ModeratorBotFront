@@ -3,6 +3,7 @@ from .base import FacadeKeyboard, DefaultPageableKeyboard, InlineBuilder
 from .keyboards import PinTimeSelectionBuilder
 from aiogram.types import InlineKeyboardButton
 from datetime import datetime, timedelta
+from database.enums import PostStatus
 from typing import Final, List, Dict
 from forms.forms import DecodedPost
 import calendar
@@ -129,14 +130,6 @@ class CalendarKeyboard(FacadeKeyboard):
         today = datetime.today()
         current_day = today.day if today.year == year and today.month == month else None
 
-        if current_day and (month_days - current_day < self.__THRESHOLD_DAYS_REMAINING):
-            month += 1
-            if month > 12:
-                month = 1
-                year += 1
-            month_days = calendar.monthrange(year, month)[self.__LAST_DAY_OF_MONTH_INDEX]
-            current_day = None
-
         days_facade.update(
             {
                 "⬅️": DataPassCallback(menu_level=self.level, action="prev", data=f"{year}_{month}").pack(),
@@ -210,18 +203,21 @@ class PostInteractionKeyboard(FacadeKeyboard):
 
     _LEVEL = "PostInteraction"
 
-    def __init__(self, is_forward: bool):
-        super().__init__(level=self._LEVEL, data=is_forward)
+    def __init__(self, is_forward: bool, status: PostStatus):
+        super().__init__(level=self._LEVEL, data=(is_forward, status))
 
     def _init_facade(self, data=None, **kwargs) -> Dict:
-        is_forward: bool = data
+        is_forward: bool = data[0]
+        status: PostStatus = data[1]
         facade: Dict = {}
 
-        if not is_forward:
-            facade["Изменить"] = AdminCallback(menu_level=self.level, action="modify").pack()
+        if status == PostStatus.deferred:
+            facade["Разместить сейчас"] = AdminCallback(menu_level=self.level, action="publish_now").pack()
 
-        facade["Отменить"] = AdminCallback(menu_level=self.level, action="cancel_post").pack()
+            if not is_forward:
+                facade["Изменить"] = AdminCallback(menu_level=self.level, action="modify").pack()
 
+            facade["Отменить"] = AdminCallback(menu_level=self.level, action="cancel_post").pack()
         return facade
 
 

@@ -586,7 +586,24 @@ async def handle_back_from_attach_media(msg: Union[CallbackQuery, Message], stat
         )
 
     if isinstance(msg, CallbackQuery):
-        await msg.message.edit_text(
+        try:
+            await bot.delete_message(chat_id=msg.from_user.id, message_id=msg.message.id - 1)
+            await bot.delete_message(chat_id=msg.from_user.id, message_id=msg.message.id - 2)
+
+        except Exception as e:
+            print(e)
+
+        await msg.message.delete()
+        media = [
+            InputMediaVideo(media=media.video, caption=media.caption)
+            if media.video else
+            InputMediaPhoto(media=media.photo, caption=media.caption)
+            for media in place_advertisement_form.message.album
+        ]
+        await msg.message.answer_media_group(
+            media=media
+        )
+        await msg.message.answer(
             text=texts.get("check_post_details").format(text=place_advertisement_form.message.text),
             reply_markup=final_keyboard.get_keyboard(menu_references.TO_WRITE_MESSAGE)
         )
@@ -720,11 +737,29 @@ async def handle_complete_keyboard(call: CallbackQuery, state: FSMContext):
         place_advertisement_form.message.album = []
         place_advertisement_form.message.document = None
         await call.answer(show_alert=True, text="Все медиа файлы успешно удалены!")
-        await call.message.edit_reply_markup(
+
+        try:
+            for i in range(1, len(place_advertisement_form.message.album) + 1):
+                await bot.delete_message(
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id - i
+                )
+
+            await bot.delete_message(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id - 1
+            )
+
+        except TelegramBadRequest as err:
+            print(err)
+
+        await call.message.answer(
+            text=call.message.text,
             reply_markup=CompletePlaceAdvertisementFormMenu(
                 place_advertisement_form.placement_type, has_media=False
             ).get_keyboard(menu_references.TO_WRITE_MESSAGE)
         )
+        await call.message.delete()
 
     encoded_place_advertisement_form: str = await tools.serializer.serialize(place_advertisement_form)
     encoded_menu_references: str = await tools.serializer.serialize(menu_references)

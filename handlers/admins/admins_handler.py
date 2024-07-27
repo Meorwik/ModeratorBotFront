@@ -133,17 +133,24 @@ async def handle_post_moderation(call: CallbackQuery, state: FSMContext):
     current_moderation_request: ModerationRequest = await tools.deserializer.deserialize(
         encoded_current_moderation_request
     )
+    advertisement_form: PlaceAdvertisementForm = await tools.deserializer.deserialize(current_moderation_request.form)
     admin_menu_references: AdminMenuReferences = await tools.deserializer.deserialize(encoded_admin_menu_references)
 
     if callback_components.action == "approved":
         try:
+            for i in range(1, len(advertisement_form.message.album)+1):
+                await bot.delete_message(
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id - i
+                )
+
             await bot.delete_message(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id - 1
             )
 
-        except TelegramBadRequest:
-            pass
+        except TelegramBadRequest as err:
+            print(err)
 
         await postgres.change_moderation_request_status(
             moderation_request_id=current_moderation_request.id,
@@ -454,7 +461,8 @@ async def handle_post_selection(call: CallbackQuery, state: FSMContext):
         await call.message.edit_text(
             text=post_info,
             reply_markup=PostInteractionKeyboard(
-                is_forward=decoded_post.post.message.is_forward
+                is_forward=decoded_post.post.message.is_forward,
+                status=decoded_post.status
             ).get_keyboard(admin_menu_references.TO_POST_SELECTION)
         )
 
@@ -477,7 +485,9 @@ async def handle_post_selection(call: CallbackQuery, state: FSMContext):
 async def handle_post_interaction(call: CallbackQuery, state: FSMContext):
     callback_components: AdminCallback = AdminCallback.unpack(call.data)
     state_data: Dict = await state.get_data()
+    encoded_current_post: str = state_data["current_post"]
 
+    current_post: DecodedPost = await tools.deserializer.deserialize(encoded_current_post)
     encoded_admin_menu_references: str = state_data["admin_menu_references"]
     admin_menu_references: AdminMenuReferences = await tools.deserializer.deserialize(encoded_admin_menu_references)
 
@@ -492,6 +502,17 @@ async def handle_post_interaction(call: CallbackQuery, state: FSMContext):
         await call.message.edit_text(
             text=texts.get("post_cancellation_confirm"),
             reply_markup=PostCancellationConfirmKeyboard().get_keyboard(admin_menu_references.TO_POST_INFO)
+        )
+
+    elif callback_components.action == "publish_now":
+        scheduler.engine.modify_job(
+            job_id=current_post.job_id,
+            next_run_time=datetime.now()
+        )
+        await call.answer("Пост был опубликован досрочно ✅")
+        await call.message.edit_text(
+            text="Вернуться к списку выбору постов",
+            reply_markup=InlineBuilder().get_back_button_keyboard(admin_menu_references.TO_POST_SELECTION)
         )
 
 
@@ -740,7 +761,25 @@ async def handle_back_from_attach_media(msg: Union[CallbackQuery, Message], stat
         )
 
     if isinstance(msg, CallbackQuery):
-        await msg.message.edit_text(
+        try:
+            await bot.delete_message(chat_id=msg.from_user.id, message_id=msg.message.id - 1)
+            await bot.delete_message(chat_id=msg.from_user.id, message_id=msg.message.id - 2)
+
+        except:
+            pass
+
+        await msg.message.delete()
+        media = [
+            InputMediaVideo(media=media.video, caption=media.caption)
+            if media.video else
+            InputMediaPhoto(media=media.photo, caption=media.caption)
+            for media in post.post.message.album
+        ]
+        await msg.message.answer_media_group(
+            media=media
+        )
+
+        await msg.message.answer(
             text=texts.get("check_post_details").format(text=post.post.message.text),
             reply_markup=final_keyboard.get_keyboard(admin_menu_references.TO_POST_INFO)
         )
