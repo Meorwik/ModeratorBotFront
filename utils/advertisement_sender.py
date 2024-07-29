@@ -169,6 +169,11 @@ class AdvertisementSender:
                 sent_message: Message = await send(chat_id, place_advertisement_form.message)
                 messages_ids.append(sent_message.message_id)
 
+        await bot.send_message(
+            chat_id=place_advertisement_form.message.from_user.id,
+            text=texts.get("published_successfully")
+        )
+
         await postgres.add_messages_ids(post_id, messages_ids)
         await postgres.change_post_status(post_id, PostStatus.placed)
         await postgres.delete_job_id(post_id)
