@@ -308,10 +308,11 @@ async def handle_payment_delivery(call: CallbackQuery, state: FSMContext):
         await bot.send_message(
             chat_id=moderated_advertisement_form.advertisement_form.message.from_user.id,
             text=templates.get("successful_payment").format(
-                text_part=moderated_advertisement_form.advertisement_form.message.text[:30],
+                total=moderated_advertisement_form.advertisement_form.total_cost,
                 chats=chat_name,
                 date=moderated_advertisement_form.advertisement_form.date,
-                time=moderated_advertisement_form.advertisement_form.time
+                time=moderated_advertisement_form.advertisement_form.time,
+                pin_days=moderated_advertisement_form.advertisement_form.pin_days,
             ),
             reply_markup=PaymentCheckResultKeyboard(is_paid=True).get_keyboard()
         )

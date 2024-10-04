@@ -71,17 +71,17 @@ async def handle_payment_method_selection(call: CallbackQuery, state: FSMContext
     )
 
     price_counter: PriceCounter = PriceCounter(moderated_advertisement_form.advertisement_form)
-
-    placement_service_cost: Final[int] = await price_counter.get_placement_service_cost()
-    pin_service_cost: Final[int] = await price_counter.get_pin_service_cost()
     total_cost: Final[int] = await price_counter.count_price()
 
-    services_cost_check: Final[str] = \
-        templates["service_cost_check"].format(service_name="Размещение", service_cost=placement_service_cost) +\
-        templates["service_cost_check"].format(service_name="Закрепление", service_cost=pin_service_cost)
+    date: str = moderated_advertisement_form.advertisement_form.date
+    time: str = moderated_advertisement_form.advertisement_form.time
+    chats: str = moderated_advertisement_form.advertisement_form.chats.name
+    if chats is None:
+        chats = "Свой пакет"
+    pin_days: int = moderated_advertisement_form.advertisement_form.pin_days
 
     payment_check: Final[str] = templates.get("payment_check_text").format(
-        services_cost_check=services_cost_check, total_cost=total_cost, card_number=meta.CARD_NUMBER
+        total=total_cost, date=date, time=time, chats=chats, pin_days=pin_days
     )
 
     if callback_components.action == "entity":
