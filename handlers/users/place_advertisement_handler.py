@@ -134,7 +134,7 @@ async def handle_various_chat_selection(call: CallbackQuery, state: FSMContext):
     callback_components: ActionCallback = ActionCallback.unpack(call.data)
     state_data: Dict = await state.get_data()
 
-    encoded_place_advertisement_form: bytes = state_data["place_advertisement_form"]
+    encoded_place_advertisement_form: str = state_data["place_advertisement_form"]
     encoded_menu_references: str = state_data["menu_references"]
     encoded_various_chat_selection: str = state_data["pagination"]
 
@@ -313,19 +313,19 @@ async def handle_write_pin_days_count(message: Message, state: FSMContext):
 
         current_menu_message_id = new_message.message_id
 
+        await state.set_state(StateGroup.place_advertisement)
+        encoded_place_advertisement_form: str = await tools.serializer.serialize(place_advertisement_form)
+        encoded_placement_type_selection: str = await tools.serializer.serialize(placement_type_selection)
+
+        state_data["current_menu_message_id"] = current_menu_message_id
+        state_data["placement_type_selection"] = encoded_placement_type_selection
+        state_data["place_advertisement_form"] = encoded_place_advertisement_form
+        await state.set_data(state_data)
+
     else:
-        await message.answer("❌Количество дней не должно быть больше 31!")
-        await message.delete()
+        await message.answer(texts["wrong_number_of_pin_days"])
 
     await message.delete()
-    await state.set_state(StateGroup.place_advertisement)
-    encoded_place_advertisement_form: str = await tools.serializer.serialize(place_advertisement_form)
-    encoded_placement_type_selection: str = await tools.serializer.serialize(placement_type_selection)
-
-    state_data["current_menu_message_id"] = current_menu_message_id
-    state_data["placement_type_selection"] = encoded_placement_type_selection
-    state_data["place_advertisement_form"] = encoded_place_advertisement_form
-    await state.set_data(state_data)
 
 
 @place_advertisement_menu_router.callback_query(

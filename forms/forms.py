@@ -33,6 +33,24 @@ class MessageToPlaceForm(Form):
 class ElectiveChatGroup(Form):
     chats: List[Union[str, int]] = field(default_factory=list)
     all_city: bool = False
+    _name: str = None
+
+    @property
+    def name(self):
+
+        if self.all_city is True:
+            self._name = "Весь город"
+
+        else:
+            self._name = "Свой пакет"
+
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+
+
 
 
 @dataclass

@@ -19,7 +19,8 @@ class AdminMainMenuKeyboard(FacadeKeyboard):
         facade: Final[Dict] = {
             "Статистика": AdminCallback(menu_level=self.level, action="statistics").pack(),
             "Размещения": AdminCallback(menu_level=self.level, action="placements").pack(),
-            "Начать модерацию": AdminCallback(menu_level=self.level, action="start_moderation").pack()
+            "Начать модерацию": AdminCallback(menu_level=self.level, action="start_moderation").pack(),
+            "Список пользователей": AdminCallback(menu_level=self.level, action="users_list").pack(),
         }
         return facade
 

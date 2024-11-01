@@ -1,9 +1,9 @@
 from sqlalchemy import String, Integer, Enum, Date, ForeignKey, BigInteger
-from sqlalchemy.orm import relationship, mapped_column, Mapped
 from .enums import Roles, ModerationStatus, PostStatus
 from sqlalchemy.sql.functions import current_date
+from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy.dialects.postgresql import ARRAY
-from typing import Final
+from typing import Final, Dict, Any
 from .base import Base
 
 MAX_USERNAME_LENGTH: Final[int] = 32
@@ -23,6 +23,16 @@ class User(Base):
 
     def __repr__(self):
         return f"User - {self.id} Role - {self.role}"
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            'id': self.id,
+            'username': self.username,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "role": self.role.name,
+            "register_date": self.register_date,
+        }
 
 
 class ChatGroup(Base):

@@ -32,11 +32,21 @@ class PostgresManager(DatabaseManager):
             result = await session.execute(query)
             return result.scalars().one_or_none()
 
+    async def get_all_users(self) -> List[User]:
+        async with self.Session() as session:
+            query = select(User)
+            result = await session.execute(query)
+
+
+
+            return result.scalars().all()
+
+
     async def get_admin(self) -> User:
         async with self.Session() as session:
             query = select(User).where(User.role == Roles.admin)
             result = await session.execute(query)
-            return result.scalars().one()
+            return result.scalars().one_or_none()
 
     async def count_all_users(self) -> int:
         async with self.Session() as session:

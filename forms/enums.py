@@ -7,26 +7,22 @@ from enum import Enum
 
 class PlacementTypes(BasePlacementTypes, Enum):
     group_repost: Final[str] = "group_repost"
-    direct_messages_repost: Final[str] = "direct_messages_repost"
     message_from_bot: Final[str] = "message_from_bot"
 
 
 class PlacementTypesNames(BasePlacementTypes, Enum):
-    group_repost: Final[str] = "Репост из группы"
-    direct_messages_repost: Final[str] = "Репост из переписки"
+    group_repost: Final[str] = "Репост"
     message_from_bot: Final[str] = "Сообщение от имени бота"
 
 
 class PlacementTypesDescription(BasePlacementTypes, Enum):
     group_repost: Final[str] = texts["repost_from_group_description"]
-    direct_messages_repost: Final[str] = texts["repost_from_user_description"]
     message_from_bot: Final[str] = texts["post_from_bot_description"]
 
 
 class PlacementTypesMediaPaths(BasePlacementTypes, Enum):
     message_from_bot: Final[str] = "data/media/placement_types/from_bot.jpg"
     group_repost: Final[str] = "data/media/placement_types/from_group.jpg"
-    direct_messages_repost: Final[str] = "data/media/placement_types/from_user.jpg"
 
 
 class PlacementTypesRequirements(BasePlacementTypes, Enum):

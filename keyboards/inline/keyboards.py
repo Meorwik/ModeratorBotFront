@@ -13,10 +13,10 @@ class MainMenuBuilder(InlineBuilder):
     _ADJUST_SIZES: List[int] = [1]
 
     _ACTIONS: Final[Dict[str, str]] = {
-        "place_advertisement": "Разместить рекламу",
-        "services_price": "Стоимость услуг",
-        "open_channel": "Перейти в канал",
-        "contact_us": "Сотрудничество"
+        "place_advertisement": "Разместить информацию в чатах",
+        "services_price": "Узнать стоимость размещения",
+        "open_channel": "Можете перейти в наш канал",
+        "contact_us": "Связаться с администратором"
     }
 
     def _init_keyboard(self) -> None:
@@ -51,7 +51,7 @@ class ChatGroupSelectionBuilder(InlineBuilder):
         super().__init__(level=self._LEVEL)
         self.chat_groups: List[ChatGroup] = chat_groups
 
-    def _init_keyboard(self) -> List[InlineKeyboardButton]:
+    def _init_keyboard(self):
         chat_selection_buttons: List[InlineKeyboardButton] = []
 
         for chat in self.chat_groups:
@@ -112,7 +112,7 @@ class VariousChatSelectionBuilder(DefaultPageableKeyboard):
     def __get_keyboard_copy(self) -> List[List[InlineKeyboardButton]]:
         return self.as_markup().inline_keyboard.copy()
 
-    def __mark(self, button: InlineKeyboardButton) -> InlineKeyboardButton:
+    def __mark(self, button: InlineKeyboardButton):
         if not self.__is_marked(button):
             button.text = f"{self.__SELECT_EMOJI}" + button.text
 
@@ -178,7 +178,7 @@ class VariousChatSelectionBuilder(DefaultPageableKeyboard):
         self.add(*self.__create_option_buttons())
         self.row(*self._create_page_buttons())
 
-    def mark_all_as_selected(self, chat_ids: Set[Union[str, int]]):
+    def mark_all_as_selected(self, chat_ids: List[Union[str, int]]):
         chat_ids: Set[str] = set([str(chat_id) for chat_id in chat_ids])
         self.__marked_chats = chat_ids
 
@@ -199,11 +199,11 @@ class PinTimeSelectionBuilder(FacadeKeyboard):
     _ADJUST_SIZES = [1]
 
     _FACADE: Dict = {
-        "Без закрепления": ActionCallback(menu_level=_LEVEL, action="0").pack(),
-        "Закреп на 1 сутки": ActionCallback(menu_level=_LEVEL, action="1").pack(),
-        "Закреп на 2 суток": ActionCallback(menu_level=_LEVEL, action="2").pack(),
-        "Закреп на 5 суток": ActionCallback(menu_level=_LEVEL, action="5").pack(),
-        "Указать количество дней": ActionCallback(menu_level=_LEVEL, action="write_days_count").pack(),
+        "Публикация без закрепления": ActionCallback(menu_level=_LEVEL, action="0").pack(),
+        "Закрепление на 1 сутки": ActionCallback(menu_level=_LEVEL, action="1").pack(),
+        "Закрепление на 2 суток": ActionCallback(menu_level=_LEVEL, action="2").pack(),
+        "Закрепление на 5 суток": ActionCallback(menu_level=_LEVEL, action="5").pack(),
+        "Иное количество дней с закреплением": ActionCallback(menu_level=_LEVEL, action="write_days_count").pack(),
     }
 
     def __init__(self):
@@ -223,7 +223,7 @@ class PlacementTypeSelection(FacadeKeyboard):
         "Отправить сообщение": ActionCallback(menu_level=_LEVEL, action="send_message").pack()
     }
 
-    __MAX_OPTIONS_COUNT: Final[int] = 3
+    __MAX_OPTIONS_COUNT: Final[int] = 2
     __MIN_OPTIONS_COUNT: Final[int] = 1
     __SELECT_BUTTON_INDEX: Final[int] = 1
 
@@ -318,13 +318,7 @@ class SelectPaymentMethodKeyboard(FacadeKeyboard):
         advertisement_form: str = str(data)
 
         facade: Dict = {
-            "Оплатить как юр лицо": DataPassCallback(
-                menu_level=self.level,
-                action="entity",
-                data=advertisement_form
-            ).pack(),
-
-            "Оплатить как физ лицо": DataPassCallback(
+            "Оплатить": DataPassCallback(
                 menu_level=self.level,
                 action="individual",
                 data=advertisement_form
@@ -349,26 +343,23 @@ class PaymentProviderKeyboard(FacadeKeyboard):
         super().__init__(level=self._LEVEL, data=(is_entity, advertisement_form))
 
     def _init_facade(self, data=None, **kwargs) -> Dict:
-        is_entity: bool = data[0]
         advertisement_form = data[1]
-        facade: Dict = {}
 
-        if is_entity:
-            facade["Запросить счет"] = "https://www.youtube.com/"
-            facade["Оплатить как физ лицо"] = DataPassCallback(
+        facade: Dict = {
+            "Оплатил": ActionCallback(menu_level=self.level, action="paid").pack(),
+
+            "Отменить публикацию": DataPassCallback(
                 menu_level="@SelectPaymentMethodKeyboard",
-                action="individual",
+                action="cancel_request",
                 data=advertisement_form
-            ).pack()
+            ).pack(),
 
-        else:
-            facade["Оплатить как юр лицо"] = DataPassCallback(
-                menu_level="@SelectPaymentMethodKeyboard",
-                action="entity",
-                data=advertisement_form
+            "Назад":  ActionCallback(
+                menu_level=self.level,
+                action="to_successfully_moderated_msg",
             ).pack()
+        }
 
-        facade["Оплатил"] = ActionCallback(menu_level=self.level, action="paid").pack()
         return facade
 
 
@@ -386,13 +377,27 @@ class PaymentCheckResultKeyboard(FacadeKeyboard):
         if is_paid:
             facade: Dict = {
                 "✅ Подтверждаю": ActionCallback(menu_level=self.level, action="confirm").pack(),
-                "⚙️ Изменить дату/время": ActionCallback(menu_level=self.level, action="change_datetime").pack()
             }
 
         else:
             facade: Dict = {
                 "Связаться с админом 👤": meta.CONTACT_US_URL,
+                "Подтвердить оплату повторно": ActionCallback(menu_level="@PaymentProviderKeyboard", action="paid").pack(),
+                "Вернуться в начало": ActionCallback(menu_level=self.level, action="restart").pack()
             }
 
         return facade
 
+class FinalKeyboard(FacadeKeyboard):
+    _ADJUST_SIZES = [1]
+    _LEVEL = "@FinalKeyboard"
+
+    def __init__(self):
+        super().__init__(level=self._LEVEL)
+
+    def _init_facade(self, data=None, **kwargs) -> Dict:
+        facade: Dict = {
+            "Вернуться в начало": ActionCallback(menu_level="@PaymentCheckResultKeyboard", action="restart").pack()
+        }
+
+        return facade

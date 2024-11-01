@@ -1,3 +1,5 @@
+from openpyxl.workbook import Workbook
+
 from keyboards.inline.admin_keyboards import AdminMainMenuKeyboard, AdminModerationKeyboard, DeclinedPostKeyboard, \
     InlineBuilder, ContinueModerationKeyboard, StatisticsKeyboard, AcceptPaymentKeyboard, CalendarKeyboard, \
     PostSelectionKeyboard, PostInteractionKeyboard, PostCancellationConfirmKeyboard, PostModifyKeyboard, \
@@ -5,8 +7,9 @@ from keyboards.inline.admin_keyboards import AdminMainMenuKeyboard, AdminModerat
 from keyboards.inline.keyboards import SelectPaymentMethodKeyboard, PaymentCheckResultKeyboard
 from keyboards.inline.callbacks import AdminCallback, BackCallback, DataPassCallback
 from forms.forms import ModeratedAdvertisementForm, PlaceAdvertisementForm, ElectiveChatGroup, DecodedPost
-from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove, InputMediaVideo, InputMediaPhoto
-from database.models import ModerationRequest, ModerationStatus, Chat, IncomeRecord, Post
+from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove, InputMediaVideo, InputMediaPhoto, InputFile, \
+    FSInputFile
+from database.models import ModerationRequest, ModerationStatus, Chat, IncomeRecord, Post, User
 from handlers.users.place_advertisement_handler import get_message_text
 from middlewares.album_middleware import AlbumMiddleware, AlbumMedia
 from utils.advertisement_sender import AdvertisementSender
@@ -25,6 +28,8 @@ from database.enums import PostStatus
 from states.states import StateGroup
 from datetime import datetime
 from aiogram import F, Router
+from pandas import DataFrame
+from os import remove
 import re
 
 
@@ -115,6 +120,21 @@ async def handle_main_admin_menu(call: CallbackQuery, state: FSMContext):
             state=state,
             call=call
         )
+
+    elif callback_components.action == "users_list":
+        users: List[User] = await postgres.get_all_users()
+        users_data_frame: Final[DataFrame]= DataFrame()
+
+        for index, user in enumerate(users):
+            users_data_frame[f"{index+1}"] = user.as_dict()
+
+        users_data_frame.to_excel("users.xlsx")
+        await call.message.answer_document(
+            document=FSInputFile(filename="users.xlsx", path="users.xlsx"),
+            caption="Список пользователей бота.",
+        )
+        remove("users.xlsx")
+
 
     encoded_admin_menu_references: str = await tools.serializer.serialize(admin_menu_references)
     state_data["admin_menu_references"] = encoded_admin_menu_references

@@ -56,6 +56,7 @@ class MenuReferences:
     TO_PLACEMENT_TYPE_SELECTION: str = ""
     TO_WRITE_MESSAGE: str = ""
     TO_CHECK_STAGE: str = ""
+    TO_PAYMENT_APPROVAL: str = ""
 
 
 @dataclass

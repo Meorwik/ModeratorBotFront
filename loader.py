@@ -19,3 +19,4 @@ commands: Final[List[BotCommand]] = [
     BotCommand(command="/start", description="Запустить / перезапустить бота")
 ]
 
+# postgresql+asyncpg://postgres:123@127.0.0.1
