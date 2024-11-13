@@ -780,11 +780,17 @@ async def handle_datetime_choice(message: Message, state: FSMContext):
         encoded_place_advertisement_form
     )
 
-    datetime_separator: Final[str] = ";"
-    date, time = message.web_app_data.data.split(datetime_separator)
+    if message.web_app_data.data == "post_immediately":
+        place_advertisement_form.is_instant_post = True
+        place_advertisement_form.date = "После оплаты"
+        place_advertisement_form.time = "После оплаты"
 
-    place_advertisement_form.date = date
-    place_advertisement_form.time = time
+    else:
+        datetime_separator: Final[str] = ";"
+        date, time = message.web_app_data.data.split(datetime_separator)
+
+        place_advertisement_form.date = date
+        place_advertisement_form.time = time
 
     price_counter: Final[PriceCounter] = PriceCounter(place_advertisement_form)
     place_advertisement_form.total_cost = await price_counter.count_price()

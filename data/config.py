@@ -37,8 +37,8 @@ class PricesMetaData:
 
 @dataclass
 class MetaData:
-    CONTACT_US_URL: Final[str] = "https://t.me/n1kol4y"
-    MAIN_CHANNEL_URL: Final[str] = "https://t.me/n1kol4y"
+    CONTACT_US_URL: Final[str] = "https://t.me/chatadmin55"
+    MAIN_CHANNEL_URL: Final[str] = "https://t.me/gorchat55"
     CARD_NUMBER: Final[str] = environ.get("CARD_NUMBER")
     MAX_PIN_DAYS_POSSIBLE: Final[int] = 31
 

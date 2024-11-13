@@ -26,6 +26,7 @@ from redis import Redis
 
 async def schedule_post_publication(moderated_advertisement_form):
     advertisement_sender: AdvertisementSender = AdvertisementSender()
+
     date = moderated_advertisement_form.advertisement_form.date
     time = moderated_advertisement_form.advertisement_form.time
 
@@ -213,7 +214,22 @@ async def handle_payment_check_result(call: CallbackQuery, state: FSMContext):
         )
 
         await state.clear()
-        await schedule_post_publication(moderated_advertisement_form)
+
+        if moderated_advertisement_form.advertisement_form.is_instant_post:
+            advertisement_sender: AdvertisementSender = AdvertisementSender()
+            encoded_advertisement_form: str = await tools.serializer.serialize(
+                moderated_advertisement_form.advertisement_form)
+            post: Post = Post(
+                publish_date=datetime.now().date(),
+                post=encoded_advertisement_form,
+                chats=[int(chat_id) for chat_id in moderated_advertisement_form.advertisement_form.chats.chats],
+            )
+            post: Post = await postgres.add_post(post)
+
+            await advertisement_sender.place_advertisement(post.id)
+
+        else:
+            await schedule_post_publication(moderated_advertisement_form)
 
     elif callback_components.action == "restart":
         await reopen_main_menu(call)

@@ -376,7 +376,7 @@ class PaymentCheckResultKeyboard(FacadeKeyboard):
 
         if is_paid:
             facade: Dict = {
-                "✅ Подтверждаю": ActionCallback(menu_level=self.level, action="confirm").pack(),
+                "В главное меню": ActionCallback(menu_level=self.level, action="confirm").pack(),
             }
 
         else:

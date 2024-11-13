@@ -62,6 +62,7 @@ class PlaceAdvertisementForm(Form):
     time: str = None
     date: str = None
     total_cost: int = 0
+    is_instant_post: bool = None
 
 
 @dataclass

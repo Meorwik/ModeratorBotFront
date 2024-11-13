@@ -29,7 +29,7 @@ class Scheduler:
         return job_defaults
 
     def __setup_timezone(self):
-        tz = timezone('Etc/GMT-5')
+        tz = timezone('Etc/GMT-6')
         return tz
 
     def __init__(self):
