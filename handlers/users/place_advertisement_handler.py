@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from keyboards.inline.keyboards import ChatGroupSelectionBuilder, \
     VariousChatSelectionBuilder, PinTimeSelectionBuilder, \
     InlineBuilder, PlacementTypeSelection, CompletePlaceAdvertisementFormMenu
@@ -782,8 +784,8 @@ async def handle_datetime_choice(message: Message, state: FSMContext):
 
     if message.web_app_data.data == "post_immediately":
         place_advertisement_form.is_instant_post = True
-        place_advertisement_form.date = "После оплаты"
-        place_advertisement_form.time = "После оплаты"
+        place_advertisement_form.date = datetime.now().date()
+        place_advertisement_form.time = datetime.now().time()
 
     else:
         datetime_separator: Final[str] = ";"
