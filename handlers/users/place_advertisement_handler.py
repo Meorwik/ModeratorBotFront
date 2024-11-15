@@ -785,7 +785,7 @@ async def handle_datetime_choice(message: Message, state: FSMContext):
     if message.web_app_data.data == "post_immediately":
         place_advertisement_form.is_instant_post = True
         place_advertisement_form.date = datetime.now().date()
-        place_advertisement_form.time = datetime.now().time()
+        place_advertisement_form.time = datetime.now().time().strftime("%H:%M")
 
     else:
         datetime_separator: Final[str] = ";"
