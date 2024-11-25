@@ -602,9 +602,14 @@ async def handle_back_from_attach_media(msg: Union[CallbackQuery, Message], stat
             InputMediaPhoto(media=media.photo, caption=media.caption)
             for media in place_advertisement_form.message.album
         ]
-        await msg.message.answer_media_group(
-            media=media
-        )
+
+        try:
+            await msg.message.answer_media_group(
+                media=media
+            )
+        except TelegramBadRequest as e:
+            ...
+
         await msg.message.answer(
             text=texts.get("check_post_details").format(text=place_advertisement_form.message.text),
             reply_markup=final_keyboard.get_keyboard(menu_references.TO_WRITE_MESSAGE)
