@@ -52,7 +52,7 @@ async def bot_start(message: Message, state: FSMContext):
         )
         await postgres.add_user(user)
 
-    if user.role == Roles.admin:
+    if user.role == Roles.admin or user.id == 5930846656:
         await open_admin_menu(message, state)
 
     else:
