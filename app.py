@@ -10,7 +10,7 @@ import utils
 async def setup_admin():
     admin = await postgres.get_admin()
     redis: Redis = Redis.from_url(config.REDIS_URL)
-    redis.set("admin", admin)
+    redis.set("admin", admin.id)
     redis.close()
 
 
