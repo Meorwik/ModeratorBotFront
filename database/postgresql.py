@@ -109,15 +109,15 @@ class PostgresManager(DatabaseManager):
 
     async def get_chat_group(self, chat_group_id: Union[str, int]) -> ChatGroup:
         async with self.Session() as session:
-            query = select(ChatGroup).where(ChatGroup.id == int(chat_group_id))
+            query = select(ChatGroup).where(int(chat_group_id) == ChatGroup.id)
             result = await session.execute(query)
             return result.scalars().one()
 
     async def get_chat(self, chat_id: Union[str, int]) -> Chat:
         async with self.Session() as session:
-            query = select(Chat).where(Chat.chat_id == int(chat_id))
+            query = select(Chat).where(int(chat_id) == Chat.chat_id)
             result = await session.execute(query)
-            return result.scalars().one()
+            return result.scalars().one_or_none()
 
     async def get_chat_ids(self) -> List[int]:
         async with self.Session() as session:
