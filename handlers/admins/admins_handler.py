@@ -12,6 +12,7 @@ from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove, InputMedi
 from database.models import ModerationRequest, ModerationStatus, Chat, IncomeRecord, Post, User
 from handlers.users.place_advertisement_handler import get_message_text
 from middlewares.album_middleware import AlbumMiddleware, AlbumMedia
+from ..users.payment_handler import schedule_post_publication
 from utils.advertisement_sender import AdvertisementSender
 from utils.validators.media_validator import MediaValidator
 from utils.validators.str_validator import StringValidator
@@ -324,6 +325,23 @@ async def handle_payment_delivery(call: CallbackQuery, state: FSMContext):
 
         else:
             chat_name: str = moderated_advertisement_form.advertisement_form.chats.name
+
+        if moderated_advertisement_form.advertisement_form.is_instant_post:
+            advertisement_sender: AdvertisementSender = AdvertisementSender()
+            encoded_advertisement_form: str = await tools.serializer.serialize(
+                moderated_advertisement_form.advertisement_form)
+            post: Post = Post(
+                publish_date=datetime.now().date(),
+                post=encoded_advertisement_form,
+                chats=[int(chat_id) for chat_id in moderated_advertisement_form.advertisement_form.chats.chats],
+            )
+            post: Post = await postgres.add_post(post)
+
+            await advertisement_sender.place_advertisement(post.id)
+
+        else:
+            await schedule_post_publication(moderated_advertisement_form)
+
 
         await bot.send_message(
             chat_id=moderated_advertisement_form.advertisement_form.message.from_user.id,
