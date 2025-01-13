@@ -216,8 +216,7 @@ class DefaultPageableKeyboard(InlineBuilder):
 
     def open_previous_page(self):
         if self._current_page == self.__MIN_PAGE_NUMBER:
-            self._current_page = self._max_page_count
-            self._separator = self._max_elements_on_page
+            self._separator = 0
         else:
             self._current_page -= 1
             self._separator -= self._max_elements_on_page
