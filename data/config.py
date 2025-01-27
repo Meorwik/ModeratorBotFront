@@ -30,7 +30,7 @@ class PricesMetaData:
     """
 
     ONE_CHAT: Final[int] = 300
-    ALL_CHATS: Final[int] = 2000
+    ALL_CHATS: Final[int] = 5000
     ONE_DAY_PIN_FOR_ALL_CHATS: Final[int] = 1500
     ONE_DAY_PIN_FOR_ONE_CHAT: Final[int] = 100
 

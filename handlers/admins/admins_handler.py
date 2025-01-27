@@ -337,7 +337,13 @@ async def handle_payment_delivery(call: CallbackQuery, state: FSMContext):
             )
             post: Post = await postgres.add_post(post)
 
+            await call.message.edit_text(
+                text="🕰 Посты в процеессе отправки..."
+            )
+
             await advertisement_sender.place_advertisement(post.id)
+
+
 
         else:
             await schedule_post_publication(moderated_advertisement_form)
